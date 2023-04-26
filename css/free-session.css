@@ -93,22 +93,40 @@ header {
 	margin-bottom: 20px;
 	color: #b95c23;
 }
+.countdown-section:first-child {
+	padding-left: 0px;
+}
+.countdown-section {
+	display: block;
+	float: left;
+	text-align: center;
+	border-radius: 5px;
+	margin: 0 10px;
+	padding: 0px 10px;
+}
 
 .countdown {
+	color: #28231f;
+	font-size: 27px;
 	display: flex;
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;
 }
 
-.countdown span {
-	font-size: 40px;
+.countdown-amount {
 	font-weight: bold;
-	margin: 0 10px;
-	background-color: rgba(255, 255, 255, 0.7);
-	padding: 10px;
-	border-radius: 5px;
-	color: #000;
+}
+.countdown .separator::after {
+	content: ':';
+	position: absolute;
+	margin-left: 20px;
+	margin-top: -2px;
+}
+.countdown-period {
+	font-size: 14px;
+	color: rgba(0, 0, 0, 0.4);
+	margin-top: -5px;
 }
 
 .button {
@@ -162,9 +180,9 @@ header {
 }
 
 @media screen and (max-width: 750px) {
-    iframe {
-        max-width: 100% !important;
-    }
+	iframe {
+		max-width: 100% !important;
+	}
 }
 
 /* testimonials */
