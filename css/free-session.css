@@ -70,6 +70,7 @@ header {
 	background-size: auto 100%;
 	color: white;
 	overflow: hidden;
+	clip-path: polygon(0 0, 100% 0, 100% 100%, 0 85%);
 }
 
 .left-column {
@@ -93,9 +94,6 @@ header {
 	margin-bottom: 20px;
 	color: #b95c23;
 }
-.countdown-section:first-child {
-	padding-left: 0px;
-}
 .countdown-section {
 	display: block;
 	float: left;
@@ -103,6 +101,9 @@ header {
 	border-radius: 5px;
 	margin: 0 10px;
 	padding: 0px 10px;
+}
+.countdown-section:first-child {
+	padding-left: 0px;
 }
 
 .countdown {
@@ -124,7 +125,7 @@ header {
 	margin-top: -2px;
 }
 .countdown-period {
-	font-size: 14px;
+	font-size: 18px;
 	color: rgba(0, 0, 0, 0.4);
 	margin-top: -5px;
 }
@@ -142,13 +143,14 @@ header {
 	width: 300px;
 }
 
-@media only screen and (max-width: 600px) {
+@media only screen and (max-width: 800px) {
 	.cover {
 		background: url('../img/yoga-header-mobile.avif') no-repeat center top;
 		background-size: cover;
 		height: auto;
 		background-size: 100% auto;
 		width: 100%;
+		clip-path: none;
 	}
 
 	.left-column {
@@ -159,8 +161,21 @@ header {
 	}
 }
 
+/* about session */
+.about-session {
+	font-size: 18px;
+}
+.about-session div {
+	margin: 0 auto;
+	max-width: 700px;
+}
+
 /* google form */
 
+.gform {
+	padding-top: 40px;
+	background-color: #fcf9f3;
+}
 .sh-divider {
 	display: flex;
 	justify-content: center;
@@ -176,20 +191,26 @@ header {
 	text-align: center;
 	max-width: 800px;
 	margin: 0 auto;
-	background-color: #fcf9f3;
 }
 
 @media screen and (max-width: 750px) {
 	iframe {
 		max-width: 100% !important;
 	}
+	.video-frame {
+		max-width: 100% !important;
+		width: auto !important;
+		height: auto !important;
+	}
 }
 
 /* testimonials */
 .testimonials {
 	background-color: #f7f7f7;
-	padding: 50px 0;
+	background-color: #0b045f;
+	padding: 80px 0 80px;
 	text-align: center;
+	clip-path: polygon(0 10%, 100% 0, 100% 90%, 0 100%);
 }
 
 .testimonials-header {
@@ -234,6 +255,9 @@ header {
 }
 
 @media (max-width: 768px) {
+	.testimonials {
+		clip-path: polygon(0 05%, 100% 0, 100% 95%, 0 100%);
+	}
 	.testimonial-box {
 		width: 80%;
 	}
@@ -252,7 +276,9 @@ header {
 .faq-content {
 	text-align: left;
 	overflow-x: hidden;
-	margin: 0 20px;
+	padding: 0 10px 30px 0;
+	max-width: 700px;
+	margin: 0 auto;
 }
 
 .faq-question {
