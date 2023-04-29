@@ -182,6 +182,9 @@ header {
 		max-width: none;
 		width: 100%;
 	}
+	.hero-button {
+		width: 300px;
+	}
 }
 
 /* about session */
@@ -372,8 +375,19 @@ header {
 }
 
 /*footer */
+footer {
+	background-color: #28231e;
+	padding: 20px;
+	width: 100%;
+	text-align: center;
+	padding: 30px 0;
+	color: #fff;
+	position: relative;
+}
 footer a {
 	color: #cf4824;
+	margin: 0 15px;
+	white-space: nowrap;
 }
 
 .flying-yogi {
@@ -386,6 +400,13 @@ footer a {
 }
 .flying-yogi img {
 	max-width: 100%;
+}
+.icons .fa {
+	color: #fff;
+	margin: 0 10px;
+	cursor: pointer;
+	padding: 19px 0;
+	font-size: 15px;
 }
 @media only screen and (max-width: 1000px) {
 	.flying-yogi img {
