@@ -191,15 +191,130 @@ header {
 .about-session {
 	font-size: 18px;
 }
-.about-session .description {
+.about-session .description,
+.video-holder {
 	margin: 0 auto;
+	padding: 20px;
 	max-width: 700px;
 }
 
-.video-holder {
-	max-width: 700px;
+.choose {
+	padding-top: 40px;
+	background-color: #fcf9f3;
+}
+/* CSS for desktop */
+
+.choose .container {
+	display: flex;
+	justify-content: center;
+	margin-top: 50px;
+}
+
+.option-box {
 	padding: 20px;
-	margin: 0 auto;
+	border: 1px solid #ccc;
+}
+
+.netflix {
+	margin-right: 50px;
+}
+
+.option-box h2 {
+	font-size: 24px;
+	margin-bottom: 10px;
+}
+
+.option-box ul {
+	margin-bottom: 20px;
+	padding-left: 0;
+}
+
+.option-box ul li {
+	margin: 5px 0;
+}
+.change ul {
+	list-style-image: url('https://uploads-ssl.webflow.com/63dfc04502456b251e6905db/6410fa36c7833b6afdcf2940_CHECKMARK%202%202.webp');
+}
+
+.netflix ul {
+	list-style-image: url('https://uploads-ssl.webflow.com/63dfc04502456b251e6905db/6410fa367d7bf9bc9175b728_CHECKMARK%202%201.webp');
+}
+
+.option-button {
+	padding: 10px 20px;
+	background-color: #007bff;
+	color: #fff;
+	border: none;
+	cursor: pointer;
+}
+
+/* CSS for mobile */
+.row {
+	max-width: 740px;
+	margin: 5% auto 0;
+	display: flex;
+	justify-content: space-between;
+}
+@media (max-width: 700px) {
+	.row {
+		flex-direction: column;
+	}
+}
+
+.default-btn {
+	display: block;
+	box-sizing: border-box;
+	background: #ffd0d0;
+	padding: 10px;
+	border-radius: 10px;
+	cursor: pointer;
+}
+.default-btn:hover {
+	box-shadow: 0 0 20px 0px rgba(0, 0, 0, 0.2);
+}
+/*----------- courses-nav --------------*/
+#courses-nav {
+	text-align: center;
+	padding-top: 030px;
+}
+.semesters {
+	flex-basis: 48%;
+	background: #fff3f3;
+	border-radius: 10px;
+	margin-bottom: 5%;
+	text-align: center;
+	padding: 20px 12px;
+	box-sizing: border-box;
+	transition: 0.5s;
+}
+.semesters h3 {
+	font-weight: 600;
+	margin: 10px;
+}
+.semesters p {
+	width: 100%;
+	margin: 15px 0;
+}
+
+@media (max-width: 700px) {
+	#courses-nav {
+		max-width: 300px;
+	}
+}
+
+@media (max-width: 767px) {
+	.choose .container {
+		flex-wrap: wrap;
+	}
+
+	.option-box {
+		margin-top: 50px;
+		padding: 20px;
+		margin-bottom: 30px;
+	}
+	.netflix {
+		margin-right: 0;
+	}
 }
 
 /* google form */
