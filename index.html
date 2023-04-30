@@ -10,6 +10,28 @@
 			rel="stylesheet"
 			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
 		/>
+
+		<link
+			rel="apple-touch-icon"
+			sizes="180x180"
+			href="/apple-touch-icon.png"
+		/>
+		<link
+			rel="icon"
+			type="image/png"
+			sizes="32x32"
+			href="/favicon-32x32.png"
+		/>
+		<link
+			rel="icon"
+			type="image/png"
+			sizes="16x16"
+			href="/favicon-16x16.png"
+		/>
+		<link rel="manifest" href="/site.webmanifest" />
+		<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5" />
+		<meta name="msapplication-TileColor" content="#da532c" />
+		<meta name="theme-color" content="#ffffff" />
 	</head>
 	<body>
 		<header>
@@ -109,7 +131,7 @@
 			</div>
 
 			<section class="about-session">
-				<div>
+				<div class="description">
 					Намаскарам 🙏 <br /><br />
 
 					Вы знаете что вам нужен английский. Возможно, вы пару раз
@@ -129,32 +151,33 @@
 					«Join Now», чтобы зарегистрироваться на бесплатную сессию, в
 					которой я поделюсь этим методом! 🔥
 				</div>
-			</section>
 
-			<section class="gform">
-				<div class="iframe-container">
-					<iframe
-						class="video-frame"
-						width="640"
-						height="360"
-						src="https://www.youtube.com/embed/_u8Ecip1vLI"
-						title="YouTube video player"
-						frameborder="0"
-						allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-						allowfullscreen
-					></iframe>
-				</div>
-
-				<div class="iframe-container">
-					<iframe
-						src="https://docs.google.com/forms/d/e/1FAIpQLSfXv6Ab-e-PJeorFv6Mf6Omr71DpC_fYjzk0BrHNrAAgD5Fow/viewform?embedded=true"
-						width="640"
-						height="900"
-						frameborder="0"
-						marginheight="0"
-						marginwidth="0"
-						>Loading…</iframe
+				<div class="video-holder">
+					<div
+						style="
+							height: 0px;
+							overflow: hidden;
+							padding-top: 56.25%;
+							position: relative;
+							width: 100%;
+						"
 					>
+						<iframe
+							style="
+								position: absolute;
+								top: 0px;
+								left: 0px;
+								width: 100%;
+								height: 100%;
+							"
+							src="https://tube.rvere.com/embed?v=_u8Ecip1vLI"
+							title="YouTube video player"
+							frameborder="0"
+							allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+							allowfullscreen
+						>
+						</iframe>
+					</div>
 				</div>
 			</section>
 

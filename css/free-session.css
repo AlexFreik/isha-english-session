@@ -90,7 +90,7 @@ header {
 	color: #000;
 }
 
-.description {
+.cover .description {
 	font-size: 20px;
 	margin-bottom: 20px;
 	color: #b95c23;
@@ -191,9 +191,15 @@ header {
 .about-session {
 	font-size: 18px;
 }
-.about-session div {
+.about-session .description {
 	margin: 0 auto;
 	max-width: 700px;
+}
+
+.video-holder {
+	max-width: 700px;
+	padding: 20px;
+	margin: 0 auto;
 }
 
 /* google form */
