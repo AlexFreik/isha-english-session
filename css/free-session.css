@@ -6,7 +6,7 @@ body {
 
 /* Header styles */
 header {
-	background-color: #e4ded4;
+	background-color: #ece2d5;
 	padding: 15px;
 	position: sticky;
 	position: -webkit-sticky;
@@ -141,8 +141,9 @@ header {
 	margin-top: -5px;
 }
 
-.hero-button {
-	font-size: 20px;
+.hero-button,
+.cta-button {
+	font-size: 19px;
 	font-weight: bold;
 	padding: 10px;
 	background-color: rgb(207, 69, 32);
@@ -153,11 +154,19 @@ header {
 	text-align: center;
 	width: 400px;
 	transition: all 0.2s linear;
+	display: block;
 }
 
-.hero-button:hover {
+.hero-button:hover,
+.cta-button:hover {
 	background-color: rgb(233 86 46);
 	animation: skew 0.5s ease-in-out 1;
+}
+
+.cta-button {
+	margin: 10px auto;
+	font-size: 19px;
+	max-width: 600px;
 }
 
 @keyframes skew {
@@ -201,6 +210,10 @@ header {
 	.hero-button {
 		width: 300px;
 	}
+	.cta-button {
+		font-size: 14px;
+		max-width: 300px;
+	}
 }
 
 /* about session */
@@ -214,86 +227,49 @@ header {
 	max-width: 700px;
 }
 
-.choose {
-	padding-top: 40px;
-	background-color: #fcf9f3;
-}
-/* CSS for desktop */
-
-.choose .container {
-	display: flex;
-	justify-content: center;
-	margin-top: 50px;
+/*----------- before-after --------------*/
+.before-after {
+	text-align: center;
+	background: url('../img/bg1.jpeg') no-repeat 50% 0%;
+	background-size: cover;
+	padding: 30px 0 50px;
+	margin-bottom: -50px;
 }
 
-.option-box {
-	padding: 20px;
-	border: 1px solid #ccc;
+.before-after h2 {
+	color: #ef3341;
+	font-size: 20px;
+	margin-bottom: -20px;
 }
 
-.netflix {
-	margin-right: 50px;
+.before-after h1 {
+	color: #174a5b;
+	font-size: 50px;
 }
 
-.option-box h2 {
-	font-size: 24px;
-	margin-bottom: 10px;
+.before-after u {
+	-webkit-text-decoration-color: #a3d7df !important;
+	text-decoration-color: #a3d7df !important;
+	background-color: rgba(209, 236, 240, 0.5);
+	border-radius: 1px;
 }
 
-.option-box ul {
-	margin-bottom: 20px;
-	padding-left: 0;
-}
-
-.option-box ul li {
-	margin: 5px 0;
-}
-.change ul {
-	list-styleimage: url('https://uploads-ssl.webflow.com/63dfc04502456b251e6905db/6410fa36c7833b6afdcf2940_CHECKMARK%202%202.webp');
-}
-
-.netflix ul {
-	list-style-image: url('https://uploads-ssl.webflow.com/63dfc04502456b251e6905db/6410fa367d7bf9bc9175b728_CHECKMARK%202%201.webp');
-}
-
-.option-button {
-	padding: 10px 20px;
-	background-color: #007bff;
-	color: #fff;
-	border: none;
-	cursor: pointer;
-}
-
-/* CSS for mobile */
 .rows {
-	max-width: 740px;
+	max-width: 950px;
 	margin: 5% auto 0;
 	display: flex;
 	justify-content: space-between;
+	padding: 10px;
 }
+
 @media (max-width: 700px) {
 	.rows {
 		flex-direction: column;
 	}
 }
 
-.default-btn {
-	display: block;
-	box-sizing: border-box;
-	background: #ffd0d0;
-	padding: 10px;
-	border-radius: 10px;
-	cursor: pointer;
-}
-.default-btn:hover {
-	box-shadow: 0 0 20px 0px rgba(0, 0, 0, 0.2);
-}
-/*----------- before-after --------------*/
-.before-after {
-	text-align: center;
-	padding-top: 030px;
-}
-.semesters {
+.option-box {
+	max-width: 500px;
 	flex-basis: 48%;
 	background: #fff3f3;
 	border-radius: 10px;
@@ -302,43 +278,87 @@ header {
 	padding: 20px 12px;
 	box-sizing: border-box;
 	transition: 0.5s;
+	padding: 20px;
+	background-color: #fff;
 }
-.semesters h3 {
-	font-weight: 600;
+
+.option-box h2 {
+	text-transform: uppercase;
+	font-size: 32px;
 	margin: 10px;
 }
-.semesters p {
-	width: 100%;
-	margin: 15px 0;
+
+.option-box a {
+    color: #fff;
+    font-size: 24px;
+    text-decoration: none;
 }
 
+.netflix h2 {
+	color: #ef3341;
+}
+.netflix a {
+	background-color: #ef3341;
+}
+
+.watch-session h2 {
+	color: #39aec0;
+}
+
+.watch-session a {
+	background-color: #39aec0;
+}
+
+.option-box ul {
+	list-style: none;
+	color: #174a5b;
+	font-size: 20px;
+	text-align: left;
+	margin-bottom: 20px;
+	padding: 0 0 10px 0;
+}
+
+.option-box li {
+    background-repeat: no-repeat;
+    background-position: 7px 9px;
+    padding: 10px 10px 10px 60px;
+}
+.netflix li {
+    background-image: url('../img/error.png');
+}
+
+.watch-session li {
+    background-image: url('../img/ok.png');
+}
 @media (max-width: 700px) {
-	#courses-nav {
-		max-width: 300px;
+	.before-after h2 {
+		font-size: 14px;
+		margin-bottom: -15px;
+	}
+	.before-after h1 {
+		font-size: 26px;
+	}
+	.option-box h2 {
+		font-size: 26px;
+	}
+
+	.before-after ul {
+        text-align: center;
+		font-size: 16px;
 	}
 }
 
-@media (max-width: 767px) {
-	.choose .container {
-		flex-wrap: wrap;
-	}
-
-	.option-box {
-		margin-top: 50px;
-		padding: 20px;
-		margin-bottom: 30px;
-	}
-	.netflix {
-		margin-right: 0;
-	}
+.default-btn {
+	display: block;
+	box-sizing: border-box;
+	padding: 10px;
+	border-radius: 10px;
+	cursor: pointer;
+}
+.default-btn:hover {
+	box-shadow: 0 0 20px 0px rgba(0, 0, 0, 0.2);
 }
 
-/* google form */
-
-.gform {
-	padding-top: 40px;
-	background-color: #fcf9f3;
-}
 .sh-divider {
 	display: flex;
 	justify-content: center;
