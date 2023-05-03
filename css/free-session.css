@@ -62,37 +62,47 @@ header {
 	}
 }
 
-/* cover */
-.cover {
+/* hero section */
+.hero {
+	background: url('../img/hero-image.avif') no-repeat 50% 0%;
+	background-color: #fff7eb;
+	height: 500px;
+	background-size: auto 100%;
+	clip-path: polygon(0 0, 100% 0, 100% 100%, 0 85%);
+}
+.hero-container {
+	text-align: right;
+	max-width: 850px;
+	margin: auto;
 	display: flex;
 	flex-direction: row;
-	background: url('../img/yoga-header.avif') no-repeat left top;
+	justify-content: flex-end;
 	height: 500px;
 	background-size: auto 100%;
 	color: white;
 	overflow: hidden;
-	clip-path: polygon(0 0, 100% 0, 100% 100%, 0 85%);
 }
 
 .left-column {
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
-	align-items: flex-start;
+	align-items: flex-end;
 	padding: 20px;
 	max-width: 550px;
 }
 
-.header {
+.hero-header {
 	font-size: 30px;
 	font-weight: bold;
 	margin-bottom: 20px;
 	color: #000;
 }
 
-.cover .description {
+.hero-container .description {
 	font-size: 20px;
 	margin-bottom: 20px;
+	max-width: 450px;
 	color: #b95c23;
 }
 .countdown-section {
@@ -165,17 +175,23 @@ header {
 	}
 }
 
-@media only screen and (max-width: 800px) {
-	.cover {
+@media only screen and (max-width: 750px) {
+	.hero {
 		background: url('../img/yoga-header-mobile.avif') no-repeat center top;
 		background-size: cover;
-		height: auto;
 		background-size: 100% auto;
 		width: 100%;
+		height: auto;
+		max-height: auto;
 		clip-path: none;
+	}
+	.hero-container {
+		text-align: center;
+		height: auto;
 	}
 
 	.left-column {
+		align-items: center;
 		margin: 100% 0 0;
 		padding: 20px;
 		background-color: #faf6f4;
@@ -233,7 +249,7 @@ header {
 	margin: 5px 0;
 }
 .change ul {
-	list-style-image: url('https://uploads-ssl.webflow.com/63dfc04502456b251e6905db/6410fa36c7833b6afdcf2940_CHECKMARK%202%202.webp');
+	list-styleimage: url('https://uploads-ssl.webflow.com/63dfc04502456b251e6905db/6410fa36c7833b6afdcf2940_CHECKMARK%202%202.webp');
 }
 
 .netflix ul {
@@ -249,14 +265,14 @@ header {
 }
 
 /* CSS for mobile */
-.row {
+.rows {
 	max-width: 740px;
 	margin: 5% auto 0;
 	display: flex;
 	justify-content: space-between;
 }
 @media (max-width: 700px) {
-	.row {
+	.rows {
 		flex-direction: column;
 	}
 }
@@ -272,8 +288,8 @@ header {
 .default-btn:hover {
 	box-shadow: 0 0 20px 0px rgba(0, 0, 0, 0.2);
 }
-/*----------- courses-nav --------------*/
-#courses-nav {
+/*----------- before-after --------------*/
+.before-after {
 	text-align: center;
 	padding-top: 030px;
 }
