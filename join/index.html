@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<title>ISHA ENGLISH - Присоединиться к сессии</title>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta http-equiv="content-language" content="ru" />
+		<meta name="keywords" content="иша, садхгуру, английский, рерпетитор" />
+		<meta name="author" content="Isha English" />
+		<meta name="publisher" content="Isha English" />
+		<meta name="copyright" content="Isha English" />
+		<meta
+			name="description"
+			content="Подключится к сессии 3 Июня 12:00 МСК, чтобы узнать как выучить английский и начать понимать Садхгуру 🙏"
+		/>
+		<meta name="audience" content="Everyone" />
+		<meta name="robots" content="noindex, nofollow" />
+
+		<meta name="msapplication-TileColor" content="#da532c" />
+		<meta name="theme-color" content="#ffffff" />
+		<link rel="stylesheet" type="text/css" href="../css/free-session.css" />
+		<link
+			rel="stylesheet"
+			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+		/>
+
+		<link
+			rel="apple-touch-icon"
+			sizes="180x180"
+			href="/apple-touch-icon.png"
+		/>
+		<link
+			rel="icon"
+			type="image/png"
+			sizes="32x32"
+			href="/favicon-32x32.png"
+		/>
+		<link
+			rel="icon"
+			type="image/png"
+			sizes="16x16"
+			href="/favicon-16x16.png"
+		/>
+		<link rel="manifest" href="/site.webmanifest" />
+		<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5" />
+	</head>
+
+	<body>
+		<header>
+			<div class="header-left" style="margin: 0 auto">
+				НАЧНИ ПОНИМАТЬ САДХГУРУ: БЕСПЛАТНАЯ
+				<b>ISHA ENGLISH СЕССИЯ | 3 ИЮНЯ, 12:00 МСК</b>
+			</div>
+		</header>
+
+		<main>
+			<section class="hero join-session"></section>
+
+			<script>
+				// Set the date we're counting down to
+				var countDownDate = new Date(
+					'2023-06-03T12:00:00.000+03:00',
+				).getTime();
+
+				// Update the count down every 1 second
+				var x = setInterval(function () {
+					// Get today's date and time
+					var now = new Date().getTime();
+
+					// Find the distance between now and the count down date
+					var distance = countDownDate - now;
+
+					// Time calculations for days, hours, minutes and seconds
+					var days = Math.floor(distance / (1000 * 60 * 60 * 24));
+					var hours = Math.floor(
+						(distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
+					);
+					var minutes = Math.floor(
+						(distance % (1000 * 60 * 60)) / (1000 * 60),
+					);
+					var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+					// Output the result in an element with id="demo"
+					document.getElementById('days').innerHTML = days;
+					document.getElementById('hours').innerHTML = hours;
+					document.getElementById('minutes').innerHTML = minutes;
+					document.getElementById('seconds').innerHTML = seconds;
+
+					// If the count down is over, write some text
+					if (distance < 0) {
+						clearInterval(x);
+						document.getElementById('demo').innerHTML = 'EXPIRED';
+					}
+				}, 1000);
+			</script>
+
+			<div class="sh-divider"style="margin-top: -10px;">
+				<img src="../img/spandahall-banner.svg" alt="sh-divider" />
+			</div>
+
+			<section class="about-session" style="margin-top: -10px;">
+				<div class="description">
+					<div class="hero-header">Isha English Сессия</div>
+                    <div style="margin:10px 0">
+                        Не сдавайтесь с Английским. Пора понять Садхгуру!
+						Изучи проверенную систему из 5 ступеней, и наконец
+						<b>заговори на English</b>, даже если вам не 20, и не
+						хватает <b>дисциплины</b> и <b>свободного времени</b>!
+					</div>
+
+					<div class="countdown">
+						<span class="countdown-section">
+							<span id="days" class="countdown-amount separator"
+								>00</span
+							>
+							<br />
+							<span class="countdown-period">Дней</span>
+						</span>
+						<span class="countdown-section">
+							<span id="hours" class="countdown-amount separator"
+								>00</span
+							>
+							<br />
+							<span class="countdown-period">Час</span>
+						</span>
+						<span class="countdown-section">
+							<span
+								id="minutes"
+								class="countdown-amount separator"
+								>00</span
+							>
+							<br />
+							<span class="countdown-period">Мин</span>
+						</span>
+						<span class="countdown-section">
+							<span id="seconds" class="countdown-amount"
+								>00</span
+							>
+							<br />
+							<span class="countdown-period">Сек</span>
+						</span>
+					</div>
+
+					<a href="#form" class="cta-button disabled"
+						>Присоединиться*</a
+					>
+                    *Кнопка станет активна 30 мин до начала Сессии.
+				</div>
+			</section>
+		</main>
+
+		<div class="flying-yogi">
+			<img src="../img/footer-flying-yogi.avif" alt="sh-divider" />
+		</div>
+		<footer style="">
+			<div style="color: #fff; text-align: center">
+				<p>&copy; 2023 Isha English. Все права защищены.</p>
+				<div class="icons">
+					<a href="https://t.me/IshaEnglish"
+						><i class="fa fa-telegram"></i>@IshaEnglish</a
+					>
+					<a href="mailto:ishaenglish5@gmail.com"
+						><i class="fa fa-envelope"></i>IshaEnglish5@gmail.com</a
+					>
+				</div>
+			</div>
+		</footer>
+	</body>
+</html>
