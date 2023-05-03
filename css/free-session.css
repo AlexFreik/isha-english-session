@@ -289,9 +289,9 @@ header {
 }
 
 .option-box a {
-    color: #fff;
-    font-size: 24px;
-    text-decoration: none;
+	color: #fff;
+	font-size: 24px;
+	text-decoration: none;
 }
 
 .netflix h2 {
@@ -319,16 +319,16 @@ header {
 }
 
 .option-box li {
-    background-repeat: no-repeat;
-    background-position: 7px 9px;
-    padding: 10px 10px 10px 60px;
+	background-repeat: no-repeat;
+	background-position: 7px 9px;
+	padding: 10px 10px 10px 60px;
 }
 .netflix li {
-    background-image: url('../img/error.png');
+	background-image: url('../img/error.png');
 }
 
 .watch-session li {
-    background-image: url('../img/ok.png');
+	background-image: url('../img/ok.png');
 }
 @media (max-width: 700px) {
 	.before-after h2 {
@@ -343,7 +343,7 @@ header {
 	}
 
 	.before-after ul {
-        text-align: center;
+		text-align: center;
 		font-size: 16px;
 	}
 }
@@ -412,7 +412,7 @@ header {
 	box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
 	margin: 10px;
 	padding: 20px;
-	text-align: center;
+	text-align: left;
 	display: inline-block;
 	width: 25%;
 }
