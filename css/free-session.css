@@ -266,6 +266,10 @@ header {
 	.rows {
 		flex-direction: column;
 	}
+
+	.option-box {
+		margin: 0 auto;
+	}
 }
 
 .option-box {
