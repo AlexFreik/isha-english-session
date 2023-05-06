@@ -583,14 +583,13 @@ footer a {
 	clip-path: polygon(0 0, 100% 0, 100% 100%, 0 85%);
 }
 @media only screen and (max-width: 700px) {
-.join-session {
-    height: 300px;
-}
+	.join-session {
+		height: 300px;
+	}
 }
 
 .disabled {
-    background-color: #777;
-     pointer-events: none;
- cursor: unset;
-
+	background-color: #777;
+	pointer-events: none;
+	cursor: unset;
 }

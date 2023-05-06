@@ -1,1810 +1,2773 @@
-<html><head><script ecommerce-type="extend-native-history-api">(() => {
-            const nativePushState = history.pushState;
-            const nativeReplaceState = history.replaceState;
-            const nativeBack = history.back;
-            const nativeForward = history.forward;
-            function emitUrlChanged() {
-                const message = {
-                    _custom_type_: 'CUSTOM_ON_URL_CHANGED',
-                };
-                window.postMessage(message);
-            }
-            history.pushState = function () {
-                nativePushState.apply(history, arguments);
-                emitUrlChanged();
-            };
-            history.replaceState = function () {
-                nativeReplaceState.apply(history, arguments);
-                emitUrlChanged();
-            };
-            history.back = function () {
-                nativeBack.apply(history, arguments);
-                emitUrlChanged();
-            };
-            history.forward = function () {
-                nativeForward.apply(history, arguments);
-                emitUrlChanged();
-            };
-        })()</script><script>
-    window[Symbol.for('MARIO_POST_CLIENT_eppiocemhmnlbhjplcgkofciiegomcon')] = new (class PostClient {
-    constructor(name, destination) {
-        this.name = name;
-        this.destination = destination;
-        this.serverListeners = {};
-        this.bgRequestsListeners = {};
-        this.bgEventsListeners = {};
-        window.addEventListener('message', (message) => {
-            const data = message.data;
-            const isNotForMe = !(data.destination && data.destination === this.name);
-            const hasNotEventProp = !data.event;
-            if (isNotForMe || hasNotEventProp) {
-                return;
-            }
-            if (data.event === 'MARIO_POST_SERVER__BG_RESPONSE') {
-                const response = data.args;
-                if (this.hasBgRequestListener(response.requestId)) {
-                    try {
-                        this.bgRequestsListeners[response.requestId](response.response);
-                    }
-                    catch (e) {
-                        console.log(e);
-                    }
-                    delete this.bgRequestsListeners[response.requestId];
-                }
-            }
-            else if (data.event === 'MARIO_POST_SERVER__BG_EVENT') {
-                const response = data.args;
-                if (this.hasBgEventListener(response.event)) {
-                    try {
-                        this.bgEventsListeners[data.id](response.payload);
-                    }
-                    catch (e) {
-                        console.log(e);
-                    }
-                }
-            }
-            else if (this.hasServerListener(data.event)) {
-                try {
-                    this.serverListeners[data.event](data.args);
-                }
-                catch (e) {
-                    console.log(e);
-                }
-            }
-            else {
-                console.log(`event not handled: ${data.event}`);
-            }
-        });
-    }
-    emitToServer(event, args) {
-        const id = this.generateUIID();
-        const message = {
-            args,
-            destination: this.destination,
-            event,
-            id,
-        };
-        window.postMessage(message, location.origin);
-        return id;
-    }
-    emitToBg(bgEventName, args) {
-        const requestId = this.generateUIID();
-        const request = { bgEventName, requestId, args };
-        this.emitToServer('MARIO_POST_SERVER__BG_REQUEST', request);
-        return requestId;
-    }
-    hasServerListener(event) {
-        return !!this.serverListeners[event];
-    }
-    hasBgRequestListener(requestId) {
-        return !!this.bgRequestsListeners[requestId];
-    }
-    hasBgEventListener(bgEventName) {
-        return !!this.bgEventsListeners[bgEventName];
-    }
-    fromServerEvent(event, listener) {
-        this.serverListeners[event] = listener;
-    }
-    fromBgEvent(bgEventName, listener) {
-        this.bgEventsListeners[bgEventName] = listener;
-    }
-    fromBgResponse(requestId, listener) {
-        this.bgRequestsListeners[requestId] = listener;
-    }
-    generateUIID() {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-            const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        });
-    }
-})('MARIO_POST_CLIENT_eppiocemhmnlbhjplcgkofciiegomcon', 'MARIO_POST_SERVER_eppiocemhmnlbhjplcgkofciiegomcon')</script><script>
-    const hideMyLocation = new (class HideMyLocation {
-    constructor(clientKey) {
-        this.clientKey = clientKey;
-        this.watchIDs = {};
-        this.client = window[Symbol.for(clientKey)];
-        const getCurrentPosition = navigator.geolocation.getCurrentPosition;
-        const watchPosition = navigator.geolocation.watchPosition;
-        const clearWatch = navigator.geolocation.clearWatch;
-        const self = this;
-        navigator.geolocation.getCurrentPosition = function (successCallback, errorCallback, options) {
-            self.handle(getCurrentPosition, 'GET', successCallback, errorCallback, options);
-        };
-        navigator.geolocation.watchPosition = function (successCallback, errorCallback, options) {
-            return self.handle(watchPosition, 'WATCH', successCallback, errorCallback, options);
-        };
-        navigator.geolocation.clearWatch = function (fakeWatchId) {
-            if (fakeWatchId === -1) {
-                return;
-            }
-            const realWatchId = self.watchIDs[fakeWatchId];
-            delete self.watchIDs[fakeWatchId];
-            return clearWatch.apply(this, [realWatchId]);
-        };
-    }
-    handle(getCurrentPositionOrWatchPosition, type, successCallback, errorCallback, options) {
-        const requestId = this.client.emitToBg('HIDE_MY_LOCATION__GET_LOCATION');
-        let fakeWatchId = this.getRandomInt(0, 100000);
-        this.client.fromBgResponse(requestId, (response) => {
-            if (response.enabled) {
-                if (response.status === 'SUCCESS') {
-                    const position = this.map(response);
-                    successCallback(position);
-                }
-                else {
-                    const error = this.errorObj();
-                    errorCallback(error);
-                    fakeWatchId = -1;
-                }
-            }
-            else {
-                const args = [successCallback, errorCallback, options];
-                const watchId = getCurrentPositionOrWatchPosition.apply(navigator.geolocation, args);
-                if (type === 'WATCH') {
-                    this.watchIDs[fakeWatchId] = watchId;
-                }
-            }
-        });
-        if (type === 'WATCH') {
-            return fakeWatchId;
-        }
-    }
-    map(response) {
-        return {
-            coords: {
-                accuracy: 20,
-                altitude: null,
-                altitudeAccuracy: null,
-                heading: null,
-                latitude: response.latitude,
-                longitude: response.longitude,
-                speed: null,
-            },
-            timestamp: Date.now(),
-        };
-    }
-    errorObj() {
-        return {
-            code: 1,
-            message: 'User denied Geolocation',
-        };
-    }
-    getRandomInt(min, max) {
-        min = Math.ceil(min);
-        max = Math.floor(max);
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
-})('MARIO_POST_CLIENT_eppiocemhmnlbhjplcgkofciiegomcon')
-  </script>
-  <!--[if gte mso 9]>
-  <xml>
-    <o:OfficeDocumentsettings>
-      <o:AllowPNG/>
-      <o:PixelsPerInch>96</o:PixelsPerInch>
-    </o:OfficeDocumentsettings>
-  </xml>
-  <![endif]-->
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="format-detection" content="address=no">
-  <meta name="format-detection" content="telephone=no">
-  <meta name="format-detection" content="email=no">
-  <meta name="x-apple-disable-message-reformatting">
-    <!--[if !mso]><!-->
-  <style type="text/css">@import url("https://assets.mlcdn.com/fonts.css?version=1682350");</style>
-  <!--<![endif]-->
-
-  <!--[if mso]>
-  <style type="text/css">
-    .content-MS .content img { width: 560px; }
-  </style>
-  <![endif]-->
-
-  <!--[if (mso)|(mso 16)]>
-  <style type="text/css">
-    .mlContentButton a { text-decoration: none; }
-  </style>
-  <![endif]-->
-
-  <!--[if !mso]><!-- -->
-  
-  <!--<![endif]-->
-
-  <!--[if (lt mso 16)]>
-  <style type="text/css" if="variable.bodyBackgroundImage.value">
-    .mlBodyBackgroundImage { background-image: none; }
-  </style>
-  <![endif]-->
-
-  <style type="text/css">
-    .ReadMsgBody { width: 100%; }
-    .ExternalClass{ width: 100%; }
-    .ExternalClass * { line-height: 100%; }
-    .ExternalClass, .ExternalClass p, .ExternalClass td, .ExternalClass div, .ExternalClass span, .ExternalClass font { line-height:100%; }
-    body { margin: 0; padding: 0; }
-    body, table, td, p, a, li { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
-    table td { border-collapse: collapse; }
-    table { border-spacing: 0; border-collapse: collapse; }
-    p, a, li, td, blockquote { mso-line-height-rule: exactly; }
-    p, a, li, td, body, table, blockquote { -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
-    img, a img { border: 0; outline: none; text-decoration: none; }
-    img { -ms-interpolation-mode: bicubic; }
-    * img[tabindex="0"] + div { display: none !important; }
-    a[href^=tel],a[href^=sms],a[href^=mailto], a[href^=date] { color: inherit; cursor: pointer; text-decoration: none; }
-    a[x-apple-data-detectors]{ color: inherit!important; text-decoration: none!important; font-size: inherit!important; font-family: inherit!important; font-weight: inherit!important; line-height: inherit!important; }
-    #MessageViewBody a { color: inherit; text-decoration: none; font-size: inherit; font-family: inherit; font-weight: inherit; line-height: inherit; }
-    #MessageViewBody { width: 100% !important; }
-    #MessageWebViewDiv { width: 100% !important; }
-
-    @-moz-document url-prefix() {
-      .bodyText p a, .bodyTitle p a {
-        word-break: break-word;
-      }
-    }
-
-    @media screen {
-      body {
-      font-family: 'Open Sans', Arial, Helvetica, sans-serif;
-    }
-    * {
-    direction: ltr;
-    }
-    }
-
-    @media only screen and (min-width:768px){
-      .mlEmailContainer{
-        width: 640px!important;
-      }
-    }
-
-    @media only screen and (max-width: 640px) {
-      .mlTemplateContainer {
-        padding: 10px 10px 0 10px;
-      }
-    } @media only screen and (max-width: 640px) {
-      .mlTemplateContainer{
-        padding: 10px 10px 0 10px;
-      }
-    } @media only screen and (max-width: 640px) {
-      .mlContentCenter{
-        min-width: 10%!important;
-        margin: 0!important;
-        float: none!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .mlContentTable{
-        width: 100%!important;
-        min-width: 10%!important;
-        margin: 0!important;
-        float: none!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .mlContentBlock{
-        display: block !important;
-        width: 100%!important;
-        min-width: 10%!important;
-        margin: 0!important;
-        float: none!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .mlContentOuter{
-        padding-bottom: 0px!important;
-        padding-left: 15px!important;
-        padding-right: 15px!important;
-        padding-top: 0px!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .mlContentOuterSmall{
-        padding-bottom: 0px!important;
-        padding-left: 10px!important;
-        padding-right: 10px!important;
-        padding-top: 0px!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .mlMenuOuter{
-        padding-bottom: 0px!important;
-        padding-left: 5px!important;
-        padding-right: 5px!important;
-        padding-top: 0px!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .mlContentOuterFullBig{
-        padding: 30px!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .mlContentImage img {
-        height: auto!important;
-        width: 100%!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .mlContentImage160 img {
-        height: auto!important;
-        max-width: 160px;
-        width: 100%!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .mlContentImage260 img {
-        height: auto!important;
-        max-width: 260px;
-        width: 100%!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .mlContentImage{
-        height: 100%!important;
-        width: auto!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .mlProductImage{
-        height: auto!important;
-        width: 100%!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .mlContentButton a{
-        display: block!important;
-        width: auto!important;
-      }
-    }
-    @media only screen and (max-width: 640px) {
-      .mobileHide{
-        display: none!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .mobileShow{
-        display: block!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .alignCenter{
-        height: auto!important;
-        text-align: center!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .alignCenter img{
-        display: inline !important;
-        text-align: center!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .marginBottom{
-        margin-bottom: 15px!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .marginTop {
-        margin-top: 10px !important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .mlContentHeight{
-        height: auto!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .mlDisplayInline {
-        display: inline-block!important;
-        float: none!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .mlNoFloat{
-        float: none!important;
-        margin-left: auto!important;
-        margin-right: auto!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .mlContentSurvey{
-        float: none!important;
-        margin-bottom: 10px!important;
-        width:100%!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .mlContentSurvey td a{
-        width: auto!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .multiple-choice-item-table{
-        width: 100% !important;
-        margin-bottom: 20px !important;
-        min-width: 10% !important;
-        float: none !important;
-      }
-    } @media only screen and (max-width: 640px) {
-      body{
-        margin: 0px!important;
-        padding: 0px!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      body, table, td, p, a, li, blockquote{
-        -webkit-text-size-adjust: none!important;
-      }
-    }
-    @media only screen and (max-width: 480px){
-      .social-LinksTable{
-        width: 100%!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .social-LinksTable td:first-child{
-        padding-left: 0px!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .social-LinksTable td:last-child{
-        padding-right: 0px!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .social-LinksTable td{
-        padding: 0 10px!important;
-      }
-    } @media only screen and (max-width: 640px) {
-      .social-LinksTable td img{
-        height: auto!important;
-        max-width: 48px;
-        width: 100%!important;
-      }
-    }
-
-    /* Carousel style */
-
-    @media screen and (-webkit-min-device-pixel-ratio: 0) {
-      .webkit {
-        display: block !important;
-      }
-    }  @media screen and (-webkit-min-device-pixel-ratio: 0) {
-      .non-webkit {
-        display: none !important;
-      }
-    }  @media screen and (-webkit-min-device-pixel-ratio: 0) {
-      /* TARGET OUTLOOK.COM */
-      [class="x_non-webkit"] {
-        display: block !important;
-      }
-    }  @media screen and (-webkit-min-device-pixel-ratio: 0) {
-      [class="x_webkit"] {
-        display: none !important;
-      }
-    }
-
-  </style>
-
-  <!--[if mso]>
-  <style type="text/css">
-    .bodyText { font-family: Arial, Helvetica, sans-serif!important ; }
-    .bodyText * { font-family: Arial, Helvetica, sans-serif!important; }
-    .bodyText a { font-family: Arial, Helvetica, sans-serif!important; }
-    .bodyText a span { font-family: Arial, Helvetica, sans-serif!important; }
-    .bodyText span { font-family: Arial, Helvetica, sans-serif!important; }
-    .bodyText p { font-family: Arial, Helvetica, sans-serif!important; }
-    .bodyText ul li { font-family: Arial, Helvetica, sans-serif!important; }
-    .bodyTitle { font-family: Arial, Helvetica, sans-serif!important ; }
-    .bodyTitle * { font-family: Arial, Helvetica, sans-serif!important; }
-    .bodyTitle a { font-family: Arial, Helvetica, sans-serif!important; }
-    .bodyTitle a span { font-family: Arial, Helvetica, sans-serif!important; }
-    .bodyTitle span { font-family: Arial, Helvetica, sans-serif!important; }
-    .bodyTitle p { font-family: Arial, Helvetica, sans-serif!important; }
-    .bodyFont { font-family: Arial, Helvetica, sans-serif!important ; }
-    .bodyFont * { font-family: Arial, Helvetica, sans-serif!important; }
-    .bodyFont a { font-family: Arial, Helvetica, sans-serif!important; }
-    .bodyFont a span { font-family: Arial, Helvetica, sans-serif!important; }
-    .bodyFont span { font-family: Arial, Helvetica, sans-serif!important; }
-    .bodyFont p { font-family: Arial, Helvetica, sans-serif!important; }
-    .mlContentButton { font-family: Arial, Helvetica, sans-serif!important; }
-  </style>
-  <![endif]-->
-  
-<style type="text/css">
-	@media only screen and (max-width: 640px){
-		#imageBlock-4 img {
-			max-width: 2000px!important;
-			width: 100%!important;
-		}
-	}
-</style><style type="text/css">
-				@media only screen and (max-width: 640px){
-					#logoBlock-6 {
-						max-width: 60px!important;
-						width: 100%!important;
+<html>
+	<head>
+		<script ecommerce-type="extend-native-history-api">
+			(() => {
+				const nativePushState = history.pushState;
+				const nativeReplaceState = history.replaceState;
+				const nativeBack = history.back;
+				const nativeForward = history.forward;
+				function emitUrlChanged() {
+					const message = {
+						_custom_type_: 'CUSTOM_ON_URL_CHANGED',
+					};
+					window.postMessage(message);
+				}
+				history.pushState = function () {
+					nativePushState.apply(history, arguments);
+					emitUrlChanged();
+				};
+				history.replaceState = function () {
+					nativeReplaceState.apply(history, arguments);
+					emitUrlChanged();
+				};
+				history.back = function () {
+					nativeBack.apply(history, arguments);
+					emitUrlChanged();
+				};
+				history.forward = function () {
+					nativeForward.apply(history, arguments);
+					emitUrlChanged();
+				};
+			})();
+		</script>
+		<script>
+			window[
+				Symbol.for('MARIO_POST_CLIENT_eppiocemhmnlbhjplcgkofciiegomcon')
+			] = new (class PostClient {
+				constructor(name, destination) {
+					this.name = name;
+					this.destination = destination;
+					this.serverListeners = {};
+					this.bgRequestsListeners = {};
+					this.bgEventsListeners = {};
+					window.addEventListener('message', (message) => {
+						const data = message.data;
+						const isNotForMe = !(
+							data.destination && data.destination === this.name
+						);
+						const hasNotEventProp = !data.event;
+						if (isNotForMe || hasNotEventProp) {
+							return;
+						}
+						if (data.event === 'MARIO_POST_SERVER__BG_RESPONSE') {
+							const response = data.args;
+							if (this.hasBgRequestListener(response.requestId)) {
+								try {
+									this.bgRequestsListeners[
+										response.requestId
+									](response.response);
+								} catch (e) {
+									console.log(e);
+								}
+								delete this.bgRequestsListeners[
+									response.requestId
+								];
+							}
+						} else if (
+							data.event === 'MARIO_POST_SERVER__BG_EVENT'
+						) {
+							const response = data.args;
+							if (this.hasBgEventListener(response.event)) {
+								try {
+									this.bgEventsListeners[data.id](
+										response.payload,
+									);
+								} catch (e) {
+									console.log(e);
+								}
+							}
+						} else if (this.hasServerListener(data.event)) {
+							try {
+								this.serverListeners[data.event](data.args);
+							} catch (e) {
+								console.log(e);
+							}
+						} else {
+							console.log(`event not handled: ${data.event}`);
+						}
+					});
+				}
+				emitToServer(event, args) {
+					const id = this.generateUIID();
+					const message = {
+						args,
+						destination: this.destination,
+						event,
+						id,
+					};
+					window.postMessage(message, location.origin);
+					return id;
+				}
+				emitToBg(bgEventName, args) {
+					const requestId = this.generateUIID();
+					const request = { bgEventName, requestId, args };
+					this.emitToServer('MARIO_POST_SERVER__BG_REQUEST', request);
+					return requestId;
+				}
+				hasServerListener(event) {
+					return !!this.serverListeners[event];
+				}
+				hasBgRequestListener(requestId) {
+					return !!this.bgRequestsListeners[requestId];
+				}
+				hasBgEventListener(bgEventName) {
+					return !!this.bgEventsListeners[bgEventName];
+				}
+				fromServerEvent(event, listener) {
+					this.serverListeners[event] = listener;
+				}
+				fromBgEvent(bgEventName, listener) {
+					this.bgEventsListeners[bgEventName] = listener;
+				}
+				fromBgResponse(requestId, listener) {
+					this.bgRequestsListeners[requestId] = listener;
+				}
+				generateUIID() {
+					return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
+						/[xy]/g,
+						function (c) {
+							const r = (Math.random() * 16) | 0,
+								v = c === 'x' ? r : (r & 0x3) | 0x8;
+							return v.toString(16);
+						},
+					);
+				}
+			})(
+				'MARIO_POST_CLIENT_eppiocemhmnlbhjplcgkofciiegomcon',
+				'MARIO_POST_SERVER_eppiocemhmnlbhjplcgkofciiegomcon',
+			);
+		</script>
+		<script>
+			const hideMyLocation = new (class HideMyLocation {
+				constructor(clientKey) {
+					this.clientKey = clientKey;
+					this.watchIDs = {};
+					this.client = window[Symbol.for(clientKey)];
+					const getCurrentPosition =
+						navigator.geolocation.getCurrentPosition;
+					const watchPosition = navigator.geolocation.watchPosition;
+					const clearWatch = navigator.geolocation.clearWatch;
+					const self = this;
+					navigator.geolocation.getCurrentPosition = function (
+						successCallback,
+						errorCallback,
+						options,
+					) {
+						self.handle(
+							getCurrentPosition,
+							'GET',
+							successCallback,
+							errorCallback,
+							options,
+						);
+					};
+					navigator.geolocation.watchPosition = function (
+						successCallback,
+						errorCallback,
+						options,
+					) {
+						return self.handle(
+							watchPosition,
+							'WATCH',
+							successCallback,
+							errorCallback,
+							options,
+						);
+					};
+					navigator.geolocation.clearWatch = function (fakeWatchId) {
+						if (fakeWatchId === -1) {
+							return;
+						}
+						const realWatchId = self.watchIDs[fakeWatchId];
+						delete self.watchIDs[fakeWatchId];
+						return clearWatch.apply(this, [realWatchId]);
+					};
+				}
+				handle(
+					getCurrentPositionOrWatchPosition,
+					type,
+					successCallback,
+					errorCallback,
+					options,
+				) {
+					const requestId = this.client.emitToBg(
+						'HIDE_MY_LOCATION__GET_LOCATION',
+					);
+					let fakeWatchId = this.getRandomInt(0, 100000);
+					this.client.fromBgResponse(requestId, (response) => {
+						if (response.enabled) {
+							if (response.status === 'SUCCESS') {
+								const position = this.map(response);
+								successCallback(position);
+							} else {
+								const error = this.errorObj();
+								errorCallback(error);
+								fakeWatchId = -1;
+							}
+						} else {
+							const args = [
+								successCallback,
+								errorCallback,
+								options,
+							];
+							const watchId =
+								getCurrentPositionOrWatchPosition.apply(
+									navigator.geolocation,
+									args,
+								);
+							if (type === 'WATCH') {
+								this.watchIDs[fakeWatchId] = watchId;
+							}
+						}
+					});
+					if (type === 'WATCH') {
+						return fakeWatchId;
 					}
 				}
-			</style><style type="text/css">
-					@media only screen and (max-width: 640px){
-						#imageBlock-20 img {
-					max-width: 65px!important;
-					width: 100%!important;
-					}
-					}
-				</style><style type="text/css">
-				@media only screen and (max-width: 640px){
-					#imageBlock-21 img {
-				max-width: 65px!important;
-				width: 100%!important;
+				map(response) {
+					return {
+						coords: {
+							accuracy: 20,
+							altitude: null,
+							altitudeAccuracy: null,
+							heading: null,
+							latitude: response.latitude,
+							longitude: response.longitude,
+							speed: null,
+						},
+						timestamp: Date.now(),
+					};
 				}
+				errorObj() {
+					return {
+						code: 1,
+						message: 'User denied Geolocation',
+					};
 				}
-			</style><style type="text/css">
-				@media only screen and (max-width: 640px){
-					#imageBlock-22 img {
-						max-width: 65px!important;
-						width: 100%!important;
-					}
+				getRandomInt(min, max) {
+					min = Math.ceil(min);
+					max = Math.floor(max);
+					return Math.floor(Math.random() * (max - min + 1)) + min;
 				}
-			</style><style type="text/css">
-  @media screen and (max-width: 640px) {
-    .show-on-mobile {
-      width: 100%;
-    }
-  }
-  @media screen and (min-width: 641px) {
-    .hide-on-desktop {
-      display:none;width:0px;max-height:0px;overflow:hidden;mso-hide:all;height:0;font-size:0;max-height:0;line-height:0;margin:0 auto;
-    }
-  }
-</style><style type="text/css">
-	@media only screen and (max-width: 640px){
-		#imageBlock-24 img {
-			max-width: 2000px!important;
-			width: 100%!important;
-		}
-	}
-</style><meta name="robots" content="noindex, nofollow">
-<title>Вы успешно зарегистрировались! Важная информация – читаем 🙏</title>
-<script>(function inject(config) {
-        function GenerateQuickId() {
-          var randomStrId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-          return randomStrId.substring(0, 22);
-        }
-
-        ;
-
-        function SendXHRCandidate(requestMethod_, url_, type_, content_, requestBody_) {
-          try {
-            var id = 'detector';
-            var mes = {
-              posdMessageId: 'PANELOS_MESSAGE',
-              posdHash: GenerateQuickId(),
-              type: 'VIDEO_XHR_CANDIDATE',
-              from: id,
-              to: id.substring(0, id.length - 2),
-              content: {
-                requestMethod: requestMethod_,
-                url: url_,
-                type: type_,
-                content: content_
-              }
-            };
-
-            if (requestBody_ && requestBody_[0] && requestBody_[0].length) {
-              mes.content.encodedPostBody = requestBody_[0];
-            } // console.log(`posd_log: ${new Date().toLocaleString()} DEBUG [${this.id}] : (PosdVideoTrafficDetector) sending`, mes);
-
-
-            window.postMessage(mes);
-          } catch (e) {}
-        }
-
-        ;
-        var open = XMLHttpRequest.prototype.open;
-
-        XMLHttpRequest.prototype.open = function () {
-          this.requestMethod = arguments[0];
-          open.apply(this, arguments);
-        };
-
-        var send = XMLHttpRequest.prototype.send;
-
-        XMLHttpRequest.prototype.send = function () {
-          var requestBody_ = Object.assign(arguments, {});
-          var onreadystatechange = this.onreadystatechange;
-
-          this.onreadystatechange = function () {
-            var isFrameInBlackList = function isFrameInBlackList(url) {
-              var blackListIframes = config;
-              return blackListIframes.some(function (e) {
-                return url.includes(e);
-              });
-            };
-
-            if (this.readyState === 4 && !isFrameInBlackList(this.responseURL)) {
-              setTimeout(SendXHRCandidate(this.requestMethod, this.responseURL, this.getResponseHeader('content-type'), this.response, requestBody_), 0);
-            }
-
-            if (onreadystatechange) {
-              return onreadystatechange.apply(this, arguments);
-            }
-          };
-
-          return send.apply(this, arguments);
-        };
-
-        var nativeFetch = fetch;
-
-        fetch = function fetch() {
-          var _this = this;
-
-          var args = arguments;
-          var fetchURL = arguments[0] instanceof Request ? arguments[0].url : arguments[0];
-          var fetchMethod = arguments[0] instanceof Request ? arguments[0].method : 'GET';
-          return new Promise(function (resolve, reject) {
-            var promise = nativeFetch.apply(_this, args);
-            promise.then(function (response) {
-              if (response.body instanceof ReadableStream) {
-                var nativeJson = response.json;
-
-                response.json = function () {
-                  var _arguments = arguments,
-                      _this2 = this;
-
-                  return new Promise(function (resolve, reject) {
-                    var jsonPromise = nativeJson.apply(_this2, _arguments);
-                    jsonPromise.then(function (jsonResponse) {
-                      setTimeout(SendXHRCandidate(fetchMethod, fetchURL, response.headers.get('content-type'), JSON.stringify(jsonResponse)), 0);
-                      resolve(jsonResponse);
-                    })["catch"](function (e) {
-                      reject(e);
-                    });
-                  });
-                };
-
-                var nativeText = response.text;
-
-                response.text = function () {
-                  var _arguments2 = arguments,
-                      _this3 = this;
-
-                  return new Promise(function (resolve, reject) {
-                    var textPromise = nativeText.apply(_this3, _arguments2);
-                    textPromise.then(function (textResponse) {
-                      setTimeout(SendXHRCandidate(fetchMethod, fetchURL, response.headers.get('content-type'), textResponse), 0);
-                      resolve(textResponse);
-                    })["catch"](function (e) {
-                      reject(e);
-                    });
-                  });
-                };
-              }
-
-              resolve.apply(this, arguments);
-            })["catch"](function () {
-              reject.apply(this, arguments);
-            });
-          });
-        };
-      })(["facebook.com/","twitter.com/","youtube-nocookie.com/embed/","//vk.com/","//www.vk.com/","//linkedin.com/","//www.linkedin.com/","//instagram.com/","//www.instagram.com/","//www.google.com/recaptcha/api2/","//hangouts.google.com/webchat/","//www.google.com/calendar/","//www.google.com/maps/embed","spotify.com/","soundcloud.com/","//player.vimeo.com/","//disqus.com/","//tgwidget.com/","//js.driftt.com/","friends2follow.com","/widget","login","//video.bigmir.net/","blogger.com","//smartlock.google.com/","//keep.google.com/","/web.tolstoycomments.com/","moz-extension://","chrome-extension://","/auth/","//analytics.google.com/","adclarity.com","paddle.com/checkout","hcaptcha.com","recaptcha.net","2captcha.com","accounts.google.com","www.google.com/shopping/customerreviews","buy.tinypass.com","gstatic.com","secureir.ebaystatic.com","docs.google.com","contacts.google.com","github.com","mail.google.com","chat.google.com"]);</script></head>
-
-<body class="mlBodyBackground" style="padding: 0; margin: 0; -webkit-font-smoothing:antialiased; background-color:#fff; -webkit-text-size-adjust:none;" bis_register="W3sibWFzdGVyIjp0cnVlLCJleHRlbnNpb25JZCI6ImVwcGlvY2VtaG1ubGJoanBsY2drb2ZjaWllZ29tY29uIiwiYWRibG9ja2VyU3RhdHVzIjp7IkRJU1BMQVkiOiJkaXNhYmxlZCIsIkZBQ0VCT09LIjoiZGlzYWJsZWQiLCJUV0lUVEVSIjoiZGlzYWJsZWQiLCJSRURESVQiOiJkaXNhYmxlZCJ9LCJ2ZXJzaW9uIjoiMS45LjEwIiwic2NvcmUiOjEwOTEwfV0=">
-
-<!-- Make your email an accessible article. -->
-<div role="article" aria-roledescription="email" aria-label="" bis_skin_checked="1">
-
-
-
-  
-    
-
-  
-
-  
-    
-    
-  
-
-  
-    
-    
-    
-  
-
-
-
-
-
-  
-    
-      
-  
-
-  
-    
-    
-    
-      
-  
-
-  
-
-    
-    
-    
-    
-    
-    
-  
-
-  
-    
-    
-    
-    
-    
-  
-
-  
-    
-    
-    
-    
-    
-  
-
-  
-    
-    
-    
-    
-    
-  
-
-  
-    
-    
-    
-    
-  
-
-  
-    
-    
-    
-  
-
-  
-    
-    
-  
-
-  
-    
-    
-    
-    
-    
-  
-
-  
-    
-    
-    
-    
-    
-  
-
-  
-    
-    
-    
-    
-    
-  
-
-  
-    
-    
-  
-
-  
-    
-    
-    
-    
-  
-
-
-
-
-
-  
-
-  
-    
-    
-    
-    
-    
-  
-
-  
-    
-    
-    
-    
-  
-
-
-
-
-
-  
-    
-    
-  
-
-  
-    
-    
-    
-    
-    
-  
-
-  
-    
-    
-    
-    
-  
-
-  
-    
-    
-    
-  
-
-  
-    
-    
-    
-    
-  
-
-  
-    
-    
-    
-  
-
-
-
-<!--[if !mso]><!-- -->
-<table width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#fff" class="mainTable mlBodyBackground" dir="ltr" background="">
-  <tbody><tr>
-    <td class="mlTemplateContainer" align="center">
-      <!--<![endif]-->
-
-      <!--[if mso 16]>
+			})('MARIO_POST_CLIENT_eppiocemhmnlbhjplcgkofciiegomcon');
+		</script>
+		<!--[if gte mso 9]>
+			<xml>
+				<o:OfficeDocumentsettings>
+					<o:AllowPNG />
+					<o:PixelsPerInch>96</o:PixelsPerInch>
+				</o:OfficeDocumentsettings>
+			</xml>
+		<![endif]-->
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="format-detection" content="address=no" />
+		<meta name="format-detection" content="telephone=no" />
+		<meta name="format-detection" content="email=no" />
+		<meta name="x-apple-disable-message-reformatting" />
+		<!--[if !mso]><!-->
+		<style type="text/css">
+			@import url('https://assets.mlcdn.com/fonts.css?version=1682350');
+		</style>
+		<!--<![endif]-->
+
+		<!--[if mso]>
+			<style type="text/css">
+				.content-MS .content img {
+					width: 560px;
+				}
+			</style>
+		<![endif]-->
+
+		<!--[if (mso)|(mso 16)]>
+			<style type="text/css">
+				.mlContentButton a {
+					text-decoration: none;
+				}
+			</style>
+		<![endif]-->
+
+		<!--[if !mso]><!-- -->
+
+		<!--<![endif]-->
+
+		<!--[if (lt mso 16)]>
+			<style type="text/css" if="variable.bodyBackgroundImage.value">
+				.mlBodyBackgroundImage {
+					background-image: none;
+				}
+			</style>
+		<![endif]-->
+
+		<style type="text/css">
+			.ReadMsgBody {
+				width: 100%;
+			}
+			.ExternalClass {
+				width: 100%;
+			}
+			.ExternalClass * {
+				line-height: 100%;
+			}
+			.ExternalClass,
+			.ExternalClass p,
+			.ExternalClass td,
+			.ExternalClass div,
+			.ExternalClass span,
+			.ExternalClass font {
+				line-height: 100%;
+			}
+			body {
+				margin: 0;
+				padding: 0;
+			}
+			body,
+			table,
+			td,
+			p,
+			a,
+			li {
+				-webkit-text-size-adjust: 100%;
+				-ms-text-size-adjust: 100%;
+			}
+			table td {
+				border-collapse: collapse;
+			}
+			table {
+				border-spacing: 0;
+				border-collapse: collapse;
+			}
+			p,
+			a,
+			li,
+			td,
+			blockquote {
+				mso-line-height-rule: exactly;
+			}
+			p,
+			a,
+			li,
+			td,
+			body,
+			table,
+			blockquote {
+				-ms-text-size-adjust: 100%;
+				-webkit-text-size-adjust: 100%;
+			}
+			img,
+			a img {
+				border: 0;
+				outline: none;
+				text-decoration: none;
+			}
+			img {
+				-ms-interpolation-mode: bicubic;
+			}
+			* img[tabindex='0'] + div {
+				display: none !important;
+			}
+			a[href^='tel'],
+			a[href^='sms'],
+			a[href^='mailto'],
+			a[href^='date'] {
+				color: inherit;
+				cursor: pointer;
+				text-decoration: none;
+			}
+			a[x-apple-data-detectors] {
+				color: inherit !important;
+				text-decoration: none !important;
+				font-size: inherit !important;
+				font-family: inherit !important;
+				font-weight: inherit !important;
+				line-height: inherit !important;
+			}
+			#MessageViewBody a {
+				color: inherit;
+				text-decoration: none;
+				font-size: inherit;
+				font-family: inherit;
+				font-weight: inherit;
+				line-height: inherit;
+			}
+			#MessageViewBody {
+				width: 100% !important;
+			}
+			#MessageWebViewDiv {
+				width: 100% !important;
+			}
+
+			@-moz-document url-prefix() {
+				.bodyText p a,
+				.bodyTitle p a {
+					word-break: break-word;
+				}
+			}
+
+			@media screen {
+				body {
+					font-family: 'Open Sans', Arial, Helvetica, sans-serif;
+				}
+				* {
+					direction: ltr;
+				}
+			}
+
+			@media only screen and (min-width: 768px) {
+				.mlEmailContainer {
+					width: 640px !important;
+				}
+			}
+
+			@media only screen and (max-width: 640px) {
+				.mlTemplateContainer {
+					padding: 10px 10px 0 10px;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.mlTemplateContainer {
+					padding: 10px 10px 0 10px;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.mlContentCenter {
+					min-width: 10% !important;
+					margin: 0 !important;
+					float: none !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.mlContentTable {
+					width: 100% !important;
+					min-width: 10% !important;
+					margin: 0 !important;
+					float: none !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.mlContentBlock {
+					display: block !important;
+					width: 100% !important;
+					min-width: 10% !important;
+					margin: 0 !important;
+					float: none !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.mlContentOuter {
+					padding-bottom: 0px !important;
+					padding-left: 15px !important;
+					padding-right: 15px !important;
+					padding-top: 0px !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.mlContentOuterSmall {
+					padding-bottom: 0px !important;
+					padding-left: 10px !important;
+					padding-right: 10px !important;
+					padding-top: 0px !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.mlMenuOuter {
+					padding-bottom: 0px !important;
+					padding-left: 5px !important;
+					padding-right: 5px !important;
+					padding-top: 0px !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.mlContentOuterFullBig {
+					padding: 30px !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.mlContentImage img {
+					height: auto !important;
+					width: 100% !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.mlContentImage160 img {
+					height: auto !important;
+					max-width: 160px;
+					width: 100% !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.mlContentImage260 img {
+					height: auto !important;
+					max-width: 260px;
+					width: 100% !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.mlContentImage {
+					height: 100% !important;
+					width: auto !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.mlProductImage {
+					height: auto !important;
+					width: 100% !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.mlContentButton a {
+					display: block !important;
+					width: auto !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.mobileHide {
+					display: none !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.mobileShow {
+					display: block !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.alignCenter {
+					height: auto !important;
+					text-align: center !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.alignCenter img {
+					display: inline !important;
+					text-align: center !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.marginBottom {
+					margin-bottom: 15px !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.marginTop {
+					margin-top: 10px !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.mlContentHeight {
+					height: auto !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.mlDisplayInline {
+					display: inline-block !important;
+					float: none !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.mlNoFloat {
+					float: none !important;
+					margin-left: auto !important;
+					margin-right: auto !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.mlContentSurvey {
+					float: none !important;
+					margin-bottom: 10px !important;
+					width: 100% !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.mlContentSurvey td a {
+					width: auto !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.multiple-choice-item-table {
+					width: 100% !important;
+					margin-bottom: 20px !important;
+					min-width: 10% !important;
+					float: none !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				body {
+					margin: 0px !important;
+					padding: 0px !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				body,
+				table,
+				td,
+				p,
+				a,
+				li,
+				blockquote {
+					-webkit-text-size-adjust: none !important;
+				}
+			}
+			@media only screen and (max-width: 480px) {
+				.social-LinksTable {
+					width: 100% !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.social-LinksTable td:first-child {
+					padding-left: 0px !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.social-LinksTable td:last-child {
+					padding-right: 0px !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.social-LinksTable td {
+					padding: 0 10px !important;
+				}
+			}
+			@media only screen and (max-width: 640px) {
+				.social-LinksTable td img {
+					height: auto !important;
+					max-width: 48px;
+					width: 100% !important;
+				}
+			}
+
+			/* Carousel style */
+
+			@media screen and (-webkit-min-device-pixel-ratio: 0) {
+				.webkit {
+					display: block !important;
+				}
+			}
+			@media screen and (-webkit-min-device-pixel-ratio: 0) {
+				.non-webkit {
+					display: none !important;
+				}
+			}
+			@media screen and (-webkit-min-device-pixel-ratio: 0) {
+				/* TARGET OUTLOOK.COM */
+				[class='x_non-webkit'] {
+					display: block !important;
+				}
+			}
+			@media screen and (-webkit-min-device-pixel-ratio: 0) {
+				[class='x_webkit'] {
+					display: none !important;
+				}
+			}
+		</style>
+
+		<!--[if mso]>
+			<style type="text/css">
+				.bodyText {
+					font-family: Arial, Helvetica, sans-serif !important ;
+				}
+				.bodyText * {
+					font-family: Arial, Helvetica, sans-serif !important;
+				}
+				.bodyText a {
+					font-family: Arial, Helvetica, sans-serif !important;
+				}
+				.bodyText a span {
+					font-family: Arial, Helvetica, sans-serif !important;
+				}
+				.bodyText span {
+					font-family: Arial, Helvetica, sans-serif !important;
+				}
+				.bodyText p {
+					font-family: Arial, Helvetica, sans-serif !important;
+				}
+				.bodyText ul li {
+					font-family: Arial, Helvetica, sans-serif !important;
+				}
+				.bodyTitle {
+					font-family: Arial, Helvetica, sans-serif !important ;
+				}
+				.bodyTitle * {
+					font-family: Arial, Helvetica, sans-serif !important;
+				}
+				.bodyTitle a {
+					font-family: Arial, Helvetica, sans-serif !important;
+				}
+				.bodyTitle a span {
+					font-family: Arial, Helvetica, sans-serif !important;
+				}
+				.bodyTitle span {
+					font-family: Arial, Helvetica, sans-serif !important;
+				}
+				.bodyTitle p {
+					font-family: Arial, Helvetica, sans-serif !important;
+				}
+				.bodyFont {
+					font-family: Arial, Helvetica, sans-serif !important ;
+				}
+				.bodyFont * {
+					font-family: Arial, Helvetica, sans-serif !important;
+				}
+				.bodyFont a {
+					font-family: Arial, Helvetica, sans-serif !important;
+				}
+				.bodyFont a span {
+					font-family: Arial, Helvetica, sans-serif !important;
+				}
+				.bodyFont span {
+					font-family: Arial, Helvetica, sans-serif !important;
+				}
+				.bodyFont p {
+					font-family: Arial, Helvetica, sans-serif !important;
+				}
+				.mlContentButton {
+					font-family: Arial, Helvetica, sans-serif !important;
+				}
+			</style>
+		<![endif]-->
+
+		<style type="text/css">
+			@media only screen and (max-width: 640px) {
+				#imageBlock-4 img {
+					max-width: 2000px !important;
+					width: 100% !important;
+				}
+			}
+		</style>
+		<style type="text/css">
+			@media only screen and (max-width: 640px) {
+				#logoBlock-6 {
+					max-width: 60px !important;
+					width: 100% !important;
+				}
+			}
+		</style>
+		<style type="text/css">
+			@media only screen and (max-width: 640px) {
+				#imageBlock-20 img {
+					max-width: 65px !important;
+					width: 100% !important;
+				}
+			}
+		</style>
+		<style type="text/css">
+			@media only screen and (max-width: 640px) {
+				#imageBlock-21 img {
+					max-width: 65px !important;
+					width: 100% !important;
+				}
+			}
+		</style>
+		<style type="text/css">
+			@media only screen and (max-width: 640px) {
+				#imageBlock-22 img {
+					max-width: 65px !important;
+					width: 100% !important;
+				}
+			}
+		</style>
+		<style type="text/css">
+			@media screen and (max-width: 640px) {
+				.show-on-mobile {
+					width: 100%;
+				}
+			}
+			@media screen and (min-width: 641px) {
+				.hide-on-desktop {
+					display: none;
+					width: 0px;
+					max-height: 0px;
+					overflow: hidden;
+					mso-hide: all;
+					height: 0;
+					font-size: 0;
+					max-height: 0;
+					line-height: 0;
+					margin: 0 auto;
+				}
+			}
+		</style>
+		<style type="text/css">
+			@media only screen and (max-width: 640px) {
+				#imageBlock-24 img {
+					max-width: 2000px !important;
+					width: 100% !important;
+				}
+			}
+		</style>
+		<meta name="robots" content="noindex, nofollow" />
+		<title>
+			Вы успешно зарегистрировались! Важная информация – читаем 🙏
+		</title>
+		<script>
+			(function inject(config) {
+				function GenerateQuickId() {
+					var randomStrId =
+						Math.random().toString(36).substring(2, 15) +
+						Math.random().toString(36).substring(2, 15) +
+						Math.random().toString(36).substring(2, 15);
+					return randomStrId.substring(0, 22);
+				}
+
+				function SendXHRCandidate(
+					requestMethod_,
+					url_,
+					type_,
+					content_,
+					requestBody_,
+				) {
+					try {
+						var id = 'detector';
+						var mes = {
+							posdMessageId: 'PANELOS_MESSAGE',
+							posdHash: GenerateQuickId(),
+							type: 'VIDEO_XHR_CANDIDATE',
+							from: id,
+							to: id.substring(0, id.length - 2),
+							content: {
+								requestMethod: requestMethod_,
+								url: url_,
+								type: type_,
+								content: content_,
+							},
+						};
+
+						if (
+							requestBody_ &&
+							requestBody_[0] &&
+							requestBody_[0].length
+						) {
+							mes.content.encodedPostBody = requestBody_[0];
+						} // console.log(`posd_log: ${new Date().toLocaleString()} DEBUG [${this.id}] : (PosdVideoTrafficDetector) sending`, mes);
+
+						window.postMessage(mes);
+					} catch (e) {}
+				}
+
+				var open = XMLHttpRequest.prototype.open;
+
+				XMLHttpRequest.prototype.open = function () {
+					this.requestMethod = arguments[0];
+					open.apply(this, arguments);
+				};
+
+				var send = XMLHttpRequest.prototype.send;
+
+				XMLHttpRequest.prototype.send = function () {
+					var requestBody_ = Object.assign(arguments, {});
+					var onreadystatechange = this.onreadystatechange;
+
+					this.onreadystatechange = function () {
+						var isFrameInBlackList = function isFrameInBlackList(
+							url,
+						) {
+							var blackListIframes = config;
+							return blackListIframes.some(function (e) {
+								return url.includes(e);
+							});
+						};
+
+						if (
+							this.readyState === 4 &&
+							!isFrameInBlackList(this.responseURL)
+						) {
+							setTimeout(
+								SendXHRCandidate(
+									this.requestMethod,
+									this.responseURL,
+									this.getResponseHeader('content-type'),
+									this.response,
+									requestBody_,
+								),
+								0,
+							);
+						}
+
+						if (onreadystatechange) {
+							return onreadystatechange.apply(this, arguments);
+						}
+					};
+
+					return send.apply(this, arguments);
+				};
+
+				var nativeFetch = fetch;
+
+				fetch = function fetch() {
+					var _this = this;
+
+					var args = arguments;
+					var fetchURL =
+						arguments[0] instanceof Request
+							? arguments[0].url
+							: arguments[0];
+					var fetchMethod =
+						arguments[0] instanceof Request
+							? arguments[0].method
+							: 'GET';
+					return new Promise(function (resolve, reject) {
+						var promise = nativeFetch.apply(_this, args);
+						promise
+							.then(function (response) {
+								if (response.body instanceof ReadableStream) {
+									var nativeJson = response.json;
+
+									response.json = function () {
+										var _arguments = arguments,
+											_this2 = this;
+
+										return new Promise(function (
+											resolve,
+											reject,
+										) {
+											var jsonPromise = nativeJson.apply(
+												_this2,
+												_arguments,
+											);
+											jsonPromise
+												.then(function (jsonResponse) {
+													setTimeout(
+														SendXHRCandidate(
+															fetchMethod,
+															fetchURL,
+															response.headers.get(
+																'content-type',
+															),
+															JSON.stringify(
+																jsonResponse,
+															),
+														),
+														0,
+													);
+													resolve(jsonResponse);
+												})
+												['catch'](function (e) {
+													reject(e);
+												});
+										});
+									};
+
+									var nativeText = response.text;
+
+									response.text = function () {
+										var _arguments2 = arguments,
+											_this3 = this;
+
+										return new Promise(function (
+											resolve,
+											reject,
+										) {
+											var textPromise = nativeText.apply(
+												_this3,
+												_arguments2,
+											);
+											textPromise
+												.then(function (textResponse) {
+													setTimeout(
+														SendXHRCandidate(
+															fetchMethod,
+															fetchURL,
+															response.headers.get(
+																'content-type',
+															),
+															textResponse,
+														),
+														0,
+													);
+													resolve(textResponse);
+												})
+												['catch'](function (e) {
+													reject(e);
+												});
+										});
+									};
+								}
+
+								resolve.apply(this, arguments);
+							})
+							['catch'](function () {
+								reject.apply(this, arguments);
+							});
+					});
+				};
+			})([
+				'facebook.com/',
+				'twitter.com/',
+				'youtube-nocookie.com/embed/',
+				'//vk.com/',
+				'//www.vk.com/',
+				'//linkedin.com/',
+				'//www.linkedin.com/',
+				'//instagram.com/',
+				'//www.instagram.com/',
+				'//www.google.com/recaptcha/api2/',
+				'//hangouts.google.com/webchat/',
+				'//www.google.com/calendar/',
+				'//www.google.com/maps/embed',
+				'spotify.com/',
+				'soundcloud.com/',
+				'//player.vimeo.com/',
+				'//disqus.com/',
+				'//tgwidget.com/',
+				'//js.driftt.com/',
+				'friends2follow.com',
+				'/widget',
+				'login',
+				'//video.bigmir.net/',
+				'blogger.com',
+				'//smartlock.google.com/',
+				'//keep.google.com/',
+				'/web.tolstoycomments.com/',
+				'moz-extension://',
+				'chrome-extension://',
+				'/auth/',
+				'//analytics.google.com/',
+				'adclarity.com',
+				'paddle.com/checkout',
+				'hcaptcha.com',
+				'recaptcha.net',
+				'2captcha.com',
+				'accounts.google.com',
+				'www.google.com/shopping/customerreviews',
+				'buy.tinypass.com',
+				'gstatic.com',
+				'secureir.ebaystatic.com',
+				'docs.google.com',
+				'contacts.google.com',
+				'github.com',
+				'mail.google.com',
+				'chat.google.com',
+			]);
+		</script>
+	</head>
+
+	<body
+		class="mlBodyBackground"
+		style="
+			padding: 0;
+			margin: 0;
+			-webkit-font-smoothing: antialiased;
+			background-color: #fff;
+			-webkit-text-size-adjust: none;
+		"
+		bis_register="W3sibWFzdGVyIjp0cnVlLCJleHRlbnNpb25JZCI6ImVwcGlvY2VtaG1ubGJoanBsY2drb2ZjaWllZ29tY29uIiwiYWRibG9ja2VyU3RhdHVzIjp7IkRJU1BMQVkiOiJkaXNhYmxlZCIsIkZBQ0VCT09LIjoiZGlzYWJsZWQiLCJUV0lUVEVSIjoiZGlzYWJsZWQiLCJSRURESVQiOiJkaXNhYmxlZCJ9LCJ2ZXJzaW9uIjoiMS45LjEwIiwic2NvcmUiOjEwOTEwfV0="
+	>
+		<!-- Make your email an accessible article. -->
+		<div
+			role="article"
+			aria-roledescription="email"
+			aria-label=""
+			bis_skin_checked="1"
+		>
+			<!--[if !mso]><!-- -->
+			<table
+				width="100%"
+				border="0"
+				cellspacing="0"
+				cellpadding="0"
+				bgcolor="#fff"
+				class="mainTable mlBodyBackground"
+				dir="ltr"
+				background=""
+			>
+				<tbody>
+					<tr>
+						<td class="mlTemplateContainer" align="center">
+							<!--<![endif]-->
+
+							<!--[if mso 16]>
       <table width="100%" border="0" cellspacing="0" cellpadding="0" align="center">
         <tr>
           <td bgcolor="#fff" align="center">
             <!--<![endif]-->
 
-      <!-- Content starts here -->
-
-      
-
-      
-
-        <!-- BORDER RADIUS FOR CARDS LAYOUT -->
-        
-
-
-        <!-- BORDER RADIUS FOR DEFAULT LAYOUT -->
-        
-
-      <table cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mobileHide">
-        <tbody><tr>
-          <td align="center">
-            
-              <table cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable">
-                <tbody>
-                
-                
-              </tbody></table>
-            
-          </td>
-        </tr>
-      </tbody></table>
-
-      	<table align="center" border="0" cellpadding="0" cellspacing="0" class="mlContentTable   " width="640">
-        <tbody><tr>
-          <td>
-            
-  <!--  -->
-<table align="center" border="0" bgcolor="#fff7eb" class="mlContentTable mlContentTableDefault" cellpadding="0" cellspacing="0" width="640">
-  <tbody><tr>
-    <td class="mlContentTableCardTd">
-
-      <table align="center" bgcolor="#fff7eb" border="0" cellpadding="0" cellspacing="0" class="mlContentTable ml-default   " style="width: 640px; min-width: 640px;" width="640">
-        <tbody><tr>
-          <td>
-            
-
-  
-  
-	
-	
-
-  	
-  	
-
-
-
-  	
-	
-
-	
-
-
-  	
-		
-	  	
-  	
-
-    
-
-
-
-
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		<td align="center" style="padding: 0px 0px;" class="">
-
-			<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="100%">
-				<tbody><tr>
-					<td align="center" id="imageBlock-4">
-            <img src="https://www.ishaenglish.com/img/footer-flying-yogi.avif" border="0" alt="" width="640" style="display: block;">
-          </td>
-				</tr>
-			</tbody></table>
-
-		</td>
-	</tr>
-</tbody></table>
-
-
-
-
-
-              
-          </td>
-        </tr>
-      </tbody></table>
-
-    </td>
-  </tr>
-</tbody></table>
-<!--  -->
-
-
-  <!--  -->
-<table align="center" border="0" bgcolor="#fff7eb" class="mlContentTable mlContentTableDefault" cellpadding="0" cellspacing="0" width="640">
-  <tbody><tr>
-    <td class="mlContentTableCardTd">
-
-      <table align="center" bgcolor="#fff7eb" border="0" cellpadding="0" cellspacing="0" class="mlContentTable ml-default   " style="width: 640px; min-width: 640px;" width="640">
-        <tbody><tr>
-          <td>
-            
-
-  
-  
-
-
-
-
-  
-  
-
-  
-  
-
-	
-		
-		
-  
-
-    
-
-
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		<td height="20" class="spacingHeight-20" style="line-height: 20px; min-height: 20px;"></td>
-	</tr>
-</tbody></table>
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		<td align="center" style="padding: 0px 40px;" class="mlContentOuter">
-
-			<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="100%">
-				<tbody><tr>
-					<td align="center">
-  					<img src="../img/isha-logo.png" id="logoBlock-6" border="0" alt="" width="60" style="display: block;">
-					</td>
-				</tr>
-			</tbody></table>
-			
-
-		</td>
-	</tr>
-</tbody></table>
-
-
-
-              
-          </td>
-        </tr>
-      </tbody></table>
-
-    </td>
-  </tr>
-</tbody></table>
-<!--  -->
-
-
-  <!--  -->
-<table align="center" border="0" bgcolor="#fff7eb" class="mlContentTable mlContentTableDefault" cellpadding="0" cellspacing="0" width="640">
-  <tbody><tr>
-    <td class="mlContentTableCardTd">
-
-      <table align="center" bgcolor="#fff7eb" border="0" cellpadding="0" cellspacing="0" class="mlContentTable ml-default   " style="width: 640px; min-width: 640px;" width="640">
-        <tbody><tr>
-          <td>
-            
-
-  
-  
-
-	
-	
-
-
-
-  
-  
-
-	
-		
-		
-	
-
-  
-    
-    
-    
-    
-    
-    
-    
-  
-
-    
-
-
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		<td height="20" class="spacingHeight-20" style="line-height: 20px; min-height: 20px;"></td>
-	</tr>
-</tbody></table>
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		<td align="center" style="padding: 0px 40px;" class="mlContentOuter">
-
-  		<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="100%">
-  			<tbody><tr>
-					<td align="center" class="bodyTitle" style="font-family: 'Open Sans', Arial, Helvetica, sans-serif; font-size: 28px; font-weight: 700; line-height: 150%; color: #111111; text-transform: none; font-style: normal; text-decoration: none; text-align: center;">Важная информация!</td>
-  			</tr>
-  		</tbody></table>
-
-		</td>
-	</tr>
-</tbody></table>
-
-
-
-              
-          </td>
-        </tr>
-      </tbody></table>
-
-    </td>
-  </tr>
-</tbody></table>
-<!--  -->
-
-
-  <!--  -->
-<table align="center" border="0" bgcolor="#fff7eb" class="mlContentTable mlContentTableDefault" cellpadding="0" cellspacing="0" width="640">
-  <tbody><tr>
-    <td class="mlContentTableCardTd">
-
-      <table align="center" bgcolor="#fff7eb" border="0" cellpadding="0" cellspacing="0" class="mlContentTable ml-default   " style="width: 640px; min-width: 640px;" width="640">
-        <tbody><tr>
-          <td>
-            
-
-  
-  
-	
-	
-
-
-
-  
-  
-
-	
-		
-		
-  
-
-	
-		
-
-		
-    
-	
-
-	
-		
-
-		
-	
-
-    
-
-
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		<td height="10" class="spacingHeight-10" style="line-height: 10px; min-height: 10px;"></td>
-	</tr>
-</tbody></table>
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		<td align="center" style="padding: 0px 40px;" class="mlContentOuter">
-
-  		<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="100%">
-  			<tbody><tr>
-  				<td class="bodyTitle" id="bodyText-10" style="font-family: 'Open Sans', Arial, Helvetica, sans-serif; font-size: 14px; line-height: 150%; color: #6f6f6f;"><p style="margin-top: 0px; margin-bottom: 0px; line-height: 150%; text-align: center;">Намаскарам 🙏 Поздравляем с регистрацией на Isha English Сессию!</p></td>
-  			</tr>
-  		</tbody></table>
-			
-
-		</td>
-	</tr>
-</tbody></table>
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		
-	</tr>
-</tbody></table>
-
-              
-          </td>
-        </tr>
-      </tbody></table>
-
-    </td>
-  </tr>
-</tbody></table>
-<!--  -->
-
-
-  <!--  -->
-<table align="center" border="0" bgcolor="#fff7eb" class="mlContentTable mlContentTableDefault" cellpadding="0" cellspacing="0" width="640">
-  <tbody><tr>
-    <td class="mlContentTableCardTd">
-
-      <table align="center" bgcolor="#fff7eb" border="0" cellpadding="0" cellspacing="0" class="mlContentTable ml-default   " style="width: 640px; min-width: 640px;" width="640">
-        <tbody><tr>
-          <td>
-            
-
-  
-  
-	
-	
-
-
-
-  
-  
-
-	
-		
-		
-  
-
-	
-		
-
-		
-    
-	
-
-	
-		
-
-		
-	
-
-    
-
-
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		<td height="20" class="spacingHeight-20" style="line-height: 20px; min-height: 20px;"></td>
-	</tr>
-</tbody></table>
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		<td align="center" style="padding: 0px 40px;" class="mlContentOuter">
-
-  		<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="100%">
-  			<tbody><tr>
-  				<td class="bodyTitle" id="bodyText-12" style="font-family: 'Open Sans', Arial, Helvetica, sans-serif; font-size: 14px; line-height: 150%; color: #6f6f6f;"><p style="margin-top: 0px; margin-bottom: 10px; line-height: 150%; text-align: center;"></p>
-<p style="margin-top: 0px; margin-bottom: 10px; line-height: 150%;">Вы официально являетесь частью нашего эпичнейшего мероприятия - <strong>Isha English Сессия</strong>. Поздравляем с первым шагом и приготовьтесь изменить свою жизнь!</p>
-<p style="margin-top: 0px; margin-bottom: 10px; line-height: 150%; text-align: center;">Сессия пройдет уже <strong>3 Июня в 12:00 МСК. </strong>Присоедитесь по сслыке снизу!</p>
-<p style="margin-top: 0px; margin-bottom: 0px; line-height: 150%;"></p></td>
-  			</tr>
-  		</tbody></table>
-			
-
-		</td>
-	</tr>
-</tbody></table>
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		<td height="20" class="spacingHeight-20" style="line-height: 20px; min-height: 20px;"></td>
-	</tr>
-</tbody></table>
-
-              
-          </td>
-        </tr>
-      </tbody></table>
-
-    </td>
-  </tr>
-</tbody></table>
-<!--  -->
-
-
-  <!--  -->
-<table align="center" border="0" bgcolor="#fff7eb" class="mlContentTable mlContentTableDefault" cellpadding="0" cellspacing="0" width="640">
-  <tbody><tr>
-    <td class="mlContentTableCardTd">
-
-      <table align="center" bgcolor="#fff7eb" border="0" cellpadding="0" cellspacing="0" class="mlContentTable ml-default   " style="width: 640px; min-width: 640px;" width="640">
-        <tbody><tr>
-          <td>
-            
-
-  
-  
-
-	
-	
-
-  
-  
-
-  
-
-    
-		
-		
-    
-
-  
-
- 
-
-  
-  
-
-    
-      
-      
-      
-      
-      
-    
-
-    
-      
-
-      
-      
-    
-
- 
-
-    
-
-
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		<td height="10" class="spacingHeight-10" style="line-height: 10px; min-height: 10px;"></td>
-	</tr>
-</tbody></table>
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		<td align="center" style="padding: 0px 40px;" class="mlContentOuter">
-
-			<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="100%" style="width: 100%; min-width: 100%;">
-				<tbody><tr>
-					<td align="center">
-
-						<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="width: 100%; min-width: 100%;">
-							<tbody><tr>
-								
-								<td align="center" class="mlContentButton" style="font-family: 'Open Sans', Arial, Helvetica, sans-serif;">
-									<!--[if mso]>
+							<!-- Content starts here -->
+
+							<!-- BORDER RADIUS FOR CARDS LAYOUT -->
+
+							<!-- BORDER RADIUS FOR DEFAULT LAYOUT -->
+
+							<table
+								cellpadding="0"
+								cellspacing="0"
+								border="0"
+								align="center"
+								width="640"
+								style="width: 640px; min-width: 640px"
+								class="mobileHide"
+							>
+								<tbody>
+									<tr>
+										<td align="center">
+											<table
+												cellpadding="0"
+												cellspacing="0"
+												border="0"
+												align="center"
+												width="640"
+												style="
+													width: 640px;
+													min-width: 640px;
+												"
+												class="mlContentTable"
+											>
+												<tbody></tbody>
+											</table>
+										</td>
+									</tr>
+								</tbody>
+							</table>
+
+							<table
+								align="center"
+								border="0"
+								cellpadding="0"
+								cellspacing="0"
+								class="mlContentTable"
+								width="640"
+							>
+								<tbody>
+									<tr>
+										<td>
+											<!--  -->
+											<table
+												align="center"
+												border="0"
+												bgcolor="#fff7eb"
+												class="mlContentTable mlContentTableDefault"
+												cellpadding="0"
+												cellspacing="0"
+												width="640"
+											>
+												<tbody>
+													<tr>
+														<td
+															class="mlContentTableCardTd"
+														>
+															<table
+																align="center"
+																bgcolor="#fff7eb"
+																border="0"
+																cellpadding="0"
+																cellspacing="0"
+																class="mlContentTable ml-default"
+																style="
+																	width: 640px;
+																	min-width: 640px;
+																"
+																width="640"
+															>
+																<tbody>
+																	<tr>
+																		<td>
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr>
+																						<td
+																							align="center"
+																							style="
+																								padding: 0px
+																									0px;
+																							"
+																							class=""
+																						>
+																							<table
+																								role="presentation"
+																								cellpadding="0"
+																								cellspacing="0"
+																								border="0"
+																								align="center"
+																								width="100%"
+																							>
+																								<tbody>
+																									<tr>
+																										<td
+																											align="center"
+																											id="imageBlock-4"
+																										>
+																											<img
+																												src="https://www.ishaenglish.com/img/footer-flying-yogi.avif"
+																												border="0"
+																												alt=""
+																												width="640"
+																												style="
+																													display: block;
+																												"
+																											/>
+																										</td>
+																									</tr>
+																								</tbody>
+																							</table>
+																						</td>
+																					</tr>
+																				</tbody>
+																			</table>
+																		</td>
+																	</tr>
+																</tbody>
+															</table>
+														</td>
+													</tr>
+												</tbody>
+											</table>
+											<!--  -->
+
+											<!--  -->
+											<table
+												align="center"
+												border="0"
+												bgcolor="#fff7eb"
+												class="mlContentTable mlContentTableDefault"
+												cellpadding="0"
+												cellspacing="0"
+												width="640"
+											>
+												<tbody>
+													<tr>
+														<td
+															class="mlContentTableCardTd"
+														>
+															<table
+																align="center"
+																bgcolor="#fff7eb"
+																border="0"
+																cellpadding="0"
+																cellspacing="0"
+																class="mlContentTable ml-default"
+																style="
+																	width: 640px;
+																	min-width: 640px;
+																"
+																width="640"
+															>
+																<tbody>
+																	<tr>
+																		<td>
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr>
+																						<td
+																							height="20"
+																							class="spacingHeight-20"
+																							style="
+																								line-height: 20px;
+																								min-height: 20px;
+																							"
+																						></td>
+																					</tr>
+																				</tbody>
+																			</table>
+
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr>
+																						<td
+																							align="center"
+																							style="
+																								padding: 0px
+																									40px;
+																							"
+																							class="mlContentOuter"
+																						>
+																							<table
+																								role="presentation"
+																								cellpadding="0"
+																								cellspacing="0"
+																								border="0"
+																								align="center"
+																								width="100%"
+																							>
+																								<tbody>
+																									<tr>
+																										<td
+																											align="center"
+																										>
+																											<img
+																												src="../img/isha-logo.png"
+																												id="logoBlock-6"
+																												border="0"
+																												alt=""
+																												width="60"
+																												style="
+																													display: block;
+																												"
+																											/>
+																										</td>
+																									</tr>
+																								</tbody>
+																							</table>
+																						</td>
+																					</tr>
+																				</tbody>
+																			</table>
+																		</td>
+																	</tr>
+																</tbody>
+															</table>
+														</td>
+													</tr>
+												</tbody>
+											</table>
+											<!--  -->
+
+											<!--  -->
+											<table
+												align="center"
+												border="0"
+												bgcolor="#fff7eb"
+												class="mlContentTable mlContentTableDefault"
+												cellpadding="0"
+												cellspacing="0"
+												width="640"
+											>
+												<tbody>
+													<tr>
+														<td
+															class="mlContentTableCardTd"
+														>
+															<table
+																align="center"
+																bgcolor="#fff7eb"
+																border="0"
+																cellpadding="0"
+																cellspacing="0"
+																class="mlContentTable ml-default"
+																style="
+																	width: 640px;
+																	min-width: 640px;
+																"
+																width="640"
+															>
+																<tbody>
+																	<tr>
+																		<td>
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr>
+																						<td
+																							height="20"
+																							class="spacingHeight-20"
+																							style="
+																								line-height: 20px;
+																								min-height: 20px;
+																							"
+																						></td>
+																					</tr>
+																				</tbody>
+																			</table>
+
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr>
+																						<td
+																							align="center"
+																							style="
+																								padding: 0px
+																									40px;
+																							"
+																							class="mlContentOuter"
+																						>
+																							<table
+																								role="presentation"
+																								cellpadding="0"
+																								cellspacing="0"
+																								border="0"
+																								align="center"
+																								width="100%"
+																							>
+																								<tbody>
+																									<tr>
+																										<td
+																											align="center"
+																											class="bodyTitle"
+																											style="
+																												font-family: 'Open Sans',
+																													Arial,
+																													Helvetica,
+																													sans-serif;
+																												font-size: 28px;
+																												font-weight: 700;
+																												line-height: 150%;
+																												color: #111111;
+																												text-transform: none;
+																												font-style: normal;
+																												text-decoration: none;
+																												text-align: center;
+																											"
+																										>
+																											Важная
+																											информация!
+																										</td>
+																									</tr>
+																								</tbody>
+																							</table>
+																						</td>
+																					</tr>
+																				</tbody>
+																			</table>
+																		</td>
+																	</tr>
+																</tbody>
+															</table>
+														</td>
+													</tr>
+												</tbody>
+											</table>
+											<!--  -->
+
+											<!--  -->
+											<table
+												align="center"
+												border="0"
+												bgcolor="#fff7eb"
+												class="mlContentTable mlContentTableDefault"
+												cellpadding="0"
+												cellspacing="0"
+												width="640"
+											>
+												<tbody>
+													<tr>
+														<td
+															class="mlContentTableCardTd"
+														>
+															<table
+																align="center"
+																bgcolor="#fff7eb"
+																border="0"
+																cellpadding="0"
+																cellspacing="0"
+																class="mlContentTable ml-default"
+																style="
+																	width: 640px;
+																	min-width: 640px;
+																"
+																width="640"
+															>
+																<tbody>
+																	<tr>
+																		<td>
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr>
+																						<td
+																							height="10"
+																							class="spacingHeight-10"
+																							style="
+																								line-height: 10px;
+																								min-height: 10px;
+																							"
+																						></td>
+																					</tr>
+																				</tbody>
+																			</table>
+
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr>
+																						<td
+																							align="center"
+																							style="
+																								padding: 0px
+																									40px;
+																							"
+																							class="mlContentOuter"
+																						>
+																							<table
+																								role="presentation"
+																								cellpadding="0"
+																								cellspacing="0"
+																								border="0"
+																								align="center"
+																								width="100%"
+																							>
+																								<tbody>
+																									<tr>
+																										<td
+																											class="bodyTitle"
+																											id="bodyText-10"
+																											style="
+																												font-family: 'Open Sans',
+																													Arial,
+																													Helvetica,
+																													sans-serif;
+																												font-size: 14px;
+																												line-height: 150%;
+																												color: #6f6f6f;
+																											"
+																										>
+																											<p
+																												style="
+																													margin-top: 0px;
+																													margin-bottom: 0px;
+																													line-height: 150%;
+																													text-align: center;
+																												"
+																											>
+																												Намаскарам
+																												🙏
+																												Поздравляем
+																												с
+																												регистрацией
+																												на
+																												Isha
+																												English
+																												Сессию!
+																											</p>
+																										</td>
+																									</tr>
+																								</tbody>
+																							</table>
+																						</td>
+																					</tr>
+																				</tbody>
+																			</table>
+
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr></tr>
+																				</tbody>
+																			</table>
+																		</td>
+																	</tr>
+																</tbody>
+															</table>
+														</td>
+													</tr>
+												</tbody>
+											</table>
+											<!--  -->
+
+											<!--  -->
+											<table
+												align="center"
+												border="0"
+												bgcolor="#fff7eb"
+												class="mlContentTable mlContentTableDefault"
+												cellpadding="0"
+												cellspacing="0"
+												width="640"
+											>
+												<tbody>
+													<tr>
+														<td
+															class="mlContentTableCardTd"
+														>
+															<table
+																align="center"
+																bgcolor="#fff7eb"
+																border="0"
+																cellpadding="0"
+																cellspacing="0"
+																class="mlContentTable ml-default"
+																style="
+																	width: 640px;
+																	min-width: 640px;
+																"
+																width="640"
+															>
+																<tbody>
+																	<tr>
+																		<td>
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr>
+																						<td
+																							height="20"
+																							class="spacingHeight-20"
+																							style="
+																								line-height: 20px;
+																								min-height: 20px;
+																							"
+																						></td>
+																					</tr>
+																				</tbody>
+																			</table>
+
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr>
+																						<td
+																							align="center"
+																							style="
+																								padding: 0px
+																									40px;
+																							"
+																							class="mlContentOuter"
+																						>
+																							<table
+																								role="presentation"
+																								cellpadding="0"
+																								cellspacing="0"
+																								border="0"
+																								align="center"
+																								width="100%"
+																							>
+																								<tbody>
+																									<tr>
+																										<td
+																											class="bodyTitle"
+																											id="bodyText-12"
+																											style="
+																												font-family: 'Open Sans',
+																													Arial,
+																													Helvetica,
+																													sans-serif;
+																												font-size: 14px;
+																												line-height: 150%;
+																												color: #6f6f6f;
+																											"
+																										>
+																											<p
+																												style="
+																													margin-top: 0px;
+																													margin-bottom: 10px;
+																													line-height: 150%;
+																													text-align: center;
+																												"
+																											></p>
+																											<p
+																												style="
+																													margin-top: 0px;
+																													margin-bottom: 10px;
+																													line-height: 150%;
+																												"
+																											>
+																												Вы
+																												официально
+																												являетесь
+																												частью
+																												нашего
+																												эпичнейшего
+																												мероприятия
+																												-
+																												<strong
+																													>Isha
+																													English
+																													Сессия</strong
+																												>.
+																												Поздравляем
+																												с
+																												первым
+																												шагом
+																												и
+																												приготовьтесь
+																												изменить
+																												свою
+																												жизнь!
+																											</p>
+																											<p
+																												style="
+																													margin-top: 0px;
+																													margin-bottom: 10px;
+																													line-height: 150%;
+																													text-align: center;
+																												"
+																											>
+																												Сессия
+																												пройдет
+																												уже
+																												<strong
+																													>3
+																													Июня
+																													в
+																													12:00
+																													МСК. </strong
+																												>Присоедитесь
+																												по
+																												сслыке
+																												снизу!
+																											</p>
+																											<p
+																												style="
+																													margin-top: 0px;
+																													margin-bottom: 0px;
+																													line-height: 150%;
+																												"
+																											></p>
+																										</td>
+																									</tr>
+																								</tbody>
+																							</table>
+																						</td>
+																					</tr>
+																				</tbody>
+																			</table>
+
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr>
+																						<td
+																							height="20"
+																							class="spacingHeight-20"
+																							style="
+																								line-height: 20px;
+																								min-height: 20px;
+																							"
+																						></td>
+																					</tr>
+																				</tbody>
+																			</table>
+																		</td>
+																	</tr>
+																</tbody>
+															</table>
+														</td>
+													</tr>
+												</tbody>
+											</table>
+											<!--  -->
+
+											<!--  -->
+											<table
+												align="center"
+												border="0"
+												bgcolor="#fff7eb"
+												class="mlContentTable mlContentTableDefault"
+												cellpadding="0"
+												cellspacing="0"
+												width="640"
+											>
+												<tbody>
+													<tr>
+														<td
+															class="mlContentTableCardTd"
+														>
+															<table
+																align="center"
+																bgcolor="#fff7eb"
+																border="0"
+																cellpadding="0"
+																cellspacing="0"
+																class="mlContentTable ml-default"
+																style="
+																	width: 640px;
+																	min-width: 640px;
+																"
+																width="640"
+															>
+																<tbody>
+																	<tr>
+																		<td>
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr>
+																						<td
+																							height="10"
+																							class="spacingHeight-10"
+																							style="
+																								line-height: 10px;
+																								min-height: 10px;
+																							"
+																						></td>
+																					</tr>
+																				</tbody>
+																			</table>
+
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr>
+																						<td
+																							align="center"
+																							style="
+																								padding: 0px
+																									40px;
+																							"
+																							class="mlContentOuter"
+																						>
+																							<table
+																								role="presentation"
+																								cellpadding="0"
+																								cellspacing="0"
+																								border="0"
+																								align="center"
+																								width="100%"
+																								style="
+																									width: 100%;
+																									min-width: 100%;
+																								"
+																							>
+																								<tbody>
+																									<tr>
+																										<td
+																											align="center"
+																										>
+																											<table
+																												role="presentation"
+																												border="0"
+																												cellpadding="0"
+																												cellspacing="0"
+																												width="100%"
+																												style="
+																													width: 100%;
+																													min-width: 100%;
+																												"
+																											>
+																												<tbody>
+																													<tr>
+																														<td
+																															align="center"
+																															class="mlContentButton"
+																															style="
+																																font-family: 'Open Sans',
+																																	Arial,
+																																	Helvetica,
+																																	sans-serif;
+																															"
+																														>
+																															<!--[if mso]>
 									<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="https://www.ishaenglish.com/join/" style="height:52px;v-text-anchor:middle;width:229px;" arcsize="42%" stroke="f" fillcolor="#ea562d">
 									<w:anchorlock/>
 									<v:shadow on="t" color="#a52834" offset="0px 3px 0px 0px"></v:shadow>
 									<center>
 									<![endif]-->
-										<a class="mlContentButton" href="https://www.ishaenglish.com/join/" style="font-family: 'Open Sans', Arial, Helvetica, sans-serif; background-color:#ea562d;border-bottom:3px solid #a52834;border-radius:21px;color:#ffffff;display:inline-block; font-size:14px;font-weight:700;line-height:20px;padding:16px 0 13px 0;text-align:center;text-decoration:none;width:210px;" target="_blank" data-link-id="87254208329287595">ishaenglish.com/join/</a>
-									<!--[if mso]>
+																															<a
+																																class="mlContentButton"
+																																href="https://www.ishaenglish.com/join/"
+																																style="
+																																	font-family: 'Open Sans',
+																																		Arial,
+																																		Helvetica,
+																																		sans-serif;
+																																	background-color: #ea562d;
+																																	border-bottom: 3px
+																																		solid
+																																		#a52834;
+																																	border-radius: 21px;
+																																	color: #ffffff;
+																																	display: inline-block;
+																																	font-size: 14px;
+																																	font-weight: 700;
+																																	line-height: 20px;
+																																	padding: 16px
+																																		0
+																																		13px
+																																		0;
+																																	text-align: center;
+																																	text-decoration: none;
+																																	width: 210px;
+																																"
+																																target="_blank"
+																																data-link-id="87254208329287595"
+																																>ishaenglish.com/join/</a
+																															>
+																															<!--[if mso]>
 									</center>
 									</v:roundrect>
 									<![endif]-->
-								</td>
-								
-							</tr>
-						</tbody></table>
-
-					</td>
-				</tr>
-			</tbody></table>
-
-		</td>
-	</tr>
-</tbody></table>
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		<td height="30" class="spacingHeight-30" style="line-height: 30px; min-height: 30px;"></td>
-	</tr>
-</tbody></table>
-
-              
-          </td>
-        </tr>
-      </tbody></table>
-
-    </td>
-  </tr>
-</tbody></table>
-<!--  -->
-
-
-  <!--  -->
-<table align="center" border="0" bgcolor="#fff7eb" class="mlContentTable mlContentTableDefault" cellpadding="0" cellspacing="0" width="640">
-  <tbody><tr>
-    <td class="mlContentTableCardTd">
-
-      <table align="center" bgcolor="#fff7eb" border="0" cellpadding="0" cellspacing="0" class="mlContentTable ml-default   " style="width: 640px; min-width: 640px;" width="640">
-        <tbody><tr>
-          <td>
-            
-
-  
-  
-
-	
-	
-
-	
-	
-
-	
-
-  	
-		
-		
-  	
-
-  
-
-	
-
-  	
-  	
-    
-    
-
-	
-
-    
-
-
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		<td height="20" class="spacingHeight-20" style="line-height: 20px; min-height: 20px;"></td>
-	</tr>
-</tbody></table>
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		<td align="center" class="">
-
-			<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="100%" style="border-top: 1px solid #ededf3; border-collapse: initial;" class="">
-				<tbody><tr>
-					<td height="20" class="spacingHeight-20" style="line-height: 20px; min-height: 20px;"></td>
-				</tr>
-			</tbody></table>
-
-		</td>
-	</tr>
-</tbody></table>
-
-              
-          </td>
-        </tr>
-      </tbody></table>
-
-    </td>
-  </tr>
-</tbody></table>
-<!--  -->
-
-
-  <!--  -->
-<table align="center" border="0" bgcolor="#fff7eb" class="mlContentTable mlContentTableDefault" cellpadding="0" cellspacing="0" width="640">
-  <tbody><tr>
-    <td class="mlContentTableCardTd">
-
-      <table align="center" bgcolor="#fff7eb" border="0" cellpadding="0" cellspacing="0" class="mlContentTable ml-default   " style="width: 640px; min-width: 640px;" width="640">
-        <tbody><tr>
-          <td>
-            
-
-  
-  
-
-	
-	
-
-	
-	
-
-	
-
-    
-		
-		
-    
-
-    
-      
-
-      
-      
-      
-
-      
-    
-
-    
-  		
-
-  		
-      
-  		
-					  
-  		
-  	
-
-    
-      
-
-      
-      
-
-    
-
-    
-      
-
-      
-    
-
-  
-
-  
-
-		
-		
-
-		
-			
-			
-			
-			
-			
-		
-
-		
-			
-			
-			
-			
-		
-
-  
-
-    
-
-
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		<td height="20" class="spacingHeight-20" style="line-height: 20px; min-height: 20px;"></td>
-	</tr>
-</tbody></table>
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		<td align="center" style="padding: 0px 40px;" class="mlContentOuter">
-
-			
-			
-
-
-				
-				
-				  	
-						
-
-			
-      
-						
-
-						
-					
-
-					
-						
-
-						
-      
-
-					
-					
-						
-
-						
-					
-				
-
-				
-
-					
-
-					
-
-					
-						
-						
-						
-						
-						
-					
-
-					
-						
-						
-						
-						
-					
-
-				
-
-			
-
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" class="mlContentOuter" width="100%">
-          <tbody><tr>
-            <td valign="top" align="left">
-              <table align="left" role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" class="mlContentTable">
-                <tbody><tr align="left">
-                  <td valign="top" class="bodyTitle" style="font-family: 'Open Sans', Arial, Helvetica, sans-serif; font-size: 28px; font-weight: 700; line-height: 150%; color: #111111; text-transform: none; font-style: normal; text-decoration: none;">Следующие шаги</td>
-                </tr>
-                <tr>
-                  <td valign="top" align="left" class="bodyTitle" id="bodyText-19" style="font-family: 'Open Sans', Arial, Helvetica, sans-serif; font-size: 14px; line-height: 150%; color: #6f6f6f; "><p style="margin-top: 0px; margin-bottom: 0px; line-height: 150%;"><br></p></td>
-                </tr>
-              </tbody></table>
-
-              <!--[if mso]>
+																														</td>
+																													</tr>
+																												</tbody>
+																											</table>
+																										</td>
+																									</tr>
+																								</tbody>
+																							</table>
+																						</td>
+																					</tr>
+																				</tbody>
+																			</table>
+
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr>
+																						<td
+																							height="30"
+																							class="spacingHeight-30"
+																							style="
+																								line-height: 30px;
+																								min-height: 30px;
+																							"
+																						></td>
+																					</tr>
+																				</tbody>
+																			</table>
+																		</td>
+																	</tr>
+																</tbody>
+															</table>
+														</td>
+													</tr>
+												</tbody>
+											</table>
+											<!--  -->
+
+											<!--  -->
+											<table
+												align="center"
+												border="0"
+												bgcolor="#fff7eb"
+												class="mlContentTable mlContentTableDefault"
+												cellpadding="0"
+												cellspacing="0"
+												width="640"
+											>
+												<tbody>
+													<tr>
+														<td
+															class="mlContentTableCardTd"
+														>
+															<table
+																align="center"
+																bgcolor="#fff7eb"
+																border="0"
+																cellpadding="0"
+																cellspacing="0"
+																class="mlContentTable ml-default"
+																style="
+																	width: 640px;
+																	min-width: 640px;
+																"
+																width="640"
+															>
+																<tbody>
+																	<tr>
+																		<td>
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr>
+																						<td
+																							height="20"
+																							class="spacingHeight-20"
+																							style="
+																								line-height: 20px;
+																								min-height: 20px;
+																							"
+																						></td>
+																					</tr>
+																				</tbody>
+																			</table>
+
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr>
+																						<td
+																							align="center"
+																							class=""
+																						>
+																							<table
+																								role="presentation"
+																								cellpadding="0"
+																								cellspacing="0"
+																								border="0"
+																								align="center"
+																								width="100%"
+																								style="
+																									border-top: 1px
+																										solid
+																										#ededf3;
+																									border-collapse: initial;
+																								"
+																								class=""
+																							>
+																								<tbody>
+																									<tr>
+																										<td
+																											height="20"
+																											class="spacingHeight-20"
+																											style="
+																												line-height: 20px;
+																												min-height: 20px;
+																											"
+																										></td>
+																									</tr>
+																								</tbody>
+																							</table>
+																						</td>
+																					</tr>
+																				</tbody>
+																			</table>
+																		</td>
+																	</tr>
+																</tbody>
+															</table>
+														</td>
+													</tr>
+												</tbody>
+											</table>
+											<!--  -->
+
+											<!--  -->
+											<table
+												align="center"
+												border="0"
+												bgcolor="#fff7eb"
+												class="mlContentTable mlContentTableDefault"
+												cellpadding="0"
+												cellspacing="0"
+												width="640"
+											>
+												<tbody>
+													<tr>
+														<td
+															class="mlContentTableCardTd"
+														>
+															<table
+																align="center"
+																bgcolor="#fff7eb"
+																border="0"
+																cellpadding="0"
+																cellspacing="0"
+																class="mlContentTable ml-default"
+																style="
+																	width: 640px;
+																	min-width: 640px;
+																"
+																width="640"
+															>
+																<tbody>
+																	<tr>
+																		<td>
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr>
+																						<td
+																							height="20"
+																							class="spacingHeight-20"
+																							style="
+																								line-height: 20px;
+																								min-height: 20px;
+																							"
+																						></td>
+																					</tr>
+																				</tbody>
+																			</table>
+
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr>
+																						<td
+																							align="center"
+																							style="
+																								padding: 0px
+																									40px;
+																							"
+																							class="mlContentOuter"
+																						>
+																							<table
+																								role="presentation"
+																								cellpadding="0"
+																								cellspacing="0"
+																								border="0"
+																								align="center"
+																								class="mlContentOuter"
+																								width="100%"
+																							>
+																								<tbody>
+																									<tr>
+																										<td
+																											valign="top"
+																											align="left"
+																										>
+																											<table
+																												align="left"
+																												role="presentation"
+																												cellpadding="0"
+																												cellspacing="0"
+																												border="0"
+																												width="560"
+																												class="mlContentTable"
+																											>
+																												<tbody>
+																													<tr
+																														align="left"
+																													>
+																														<td
+																															valign="top"
+																															class="bodyTitle"
+																															style="
+																																font-family: 'Open Sans',
+																																	Arial,
+																																	Helvetica,
+																																	sans-serif;
+																																font-size: 28px;
+																																font-weight: 700;
+																																line-height: 150%;
+																																color: #111111;
+																																text-transform: none;
+																																font-style: normal;
+																																text-decoration: none;
+																															"
+																														>
+																															Следующие
+																															шаги
+																														</td>
+																													</tr>
+																													<tr>
+																														<td
+																															valign="top"
+																															align="left"
+																															class="bodyTitle"
+																															id="bodyText-19"
+																															style="
+																																font-family: 'Open Sans',
+																																	Arial,
+																																	Helvetica,
+																																	sans-serif;
+																																font-size: 14px;
+																																line-height: 150%;
+																																color: #6f6f6f;
+																															"
+																														>
+																															<p
+																																style="
+																																	margin-top: 0px;
+																																	margin-bottom: 0px;
+																																	line-height: 150%;
+																																"
+																															>
+																																<br />
+																															</p>
+																														</td>
+																													</tr>
+																												</tbody>
+																											</table>
+
+																											<!--[if mso]>
               </td>
               <td valign="top">
               <![endif]-->
+																										</td>
+																									</tr>
+																									<tr>
+																										<td
+																											height="10"
+																										></td>
+																									</tr>
+																								</tbody>
+																							</table>
+																						</td>
+																					</tr>
+																				</tbody>
+																			</table>
 
-              
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr>
+																						<td
+																							height="20"
+																							class="spacingHeight-20"
+																						></td>
+																					</tr>
+																				</tbody>
+																			</table>
 
-            </td>
-          </tr>
-          <tr>
-            <td height="10"></td>
-          </tr>
-        </tbody></table>
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr>
+																						<td
+																							align="center"
+																							style="
+																								padding: 0px
+																									40px;
+																							"
+																							class="mlContentOuter"
+																						>
+																							<table
+																								role="presentation"
+																								cellpadding="0"
+																								align="center"
+																								width="100%"
+																								border="0"
+																							>
+																								<tbody>
+																									<tr>
+																										<td
+																											valign="top"
+																										>
+																											<table
+																												role="presentation"
+																												cellpadding="0"
+																												cellspacing="0"
+																												border="0"
+																												align="left"
+																												width="173"
+																												class="mlContentTable marginBottom"
+																												style="
+																													width: 173px;
+																													min-width: 173px;
+																												"
+																											>
+																												<tbody>
+																													<tr>
+																														<td
+																															align="left"
+																															id="imageBlock-20"
+																														>
+																															<img
+																																src="../img/calendar-icon.png"
+																																width="65"
+																																border="0"
+																																alt="calendar"
+																																style="
+																																	display: block;
+																																"
+																															/>
+																														</td>
+																													</tr>
+																													<tr>
+																														<td
+																															height="20"
+																															class="spacingHeight-20"
+																														></td>
+																													</tr>
+																													<tr>
+																														<td
+																															align="center"
+																															valign="top"
+																															class="bodyTitle"
+																															style="
+																																font-family: 'Open Sans',
+																																	Arial,
+																																	Helvetica,
+																																	sans-serif;
+																																font-size: 16px;
+																																font-weight: 700;
+																																line-height: 150%;
+																																color: #111111;
+																																text-transform: none;
+																																font-style: normal;
+																																text-decoration: none;
+																																text-align: left;
+																															"
+																														>
+																															Напоминание
+																															в
+																															Календаре
+																														</td>
+																													</tr>
+																													<tr>
+																														<td
+																															height="5"
+																															style="
+																																height: 5px;
+																																min-height: 5px;
+																																line-height: 5px;
+																															"
+																														></td>
+																													</tr>
+																													<tr>
+																														<td
+																															align="left"
+																															class="bodyTitle"
+																															id="bodyText-20"
+																															style="
+																																font-family: 'Open Sans',
+																																	Arial,
+																																	Helvetica,
+																																	sans-serif;
+																																font-size: 14px;
+																																line-height: 150%;
+																																color: #6f6f6f;
+																															"
+																														>
+																															<p
+																																style="
+																																	margin-top: 0px;
+																																	margin-bottom: 10px;
+																																"
+																															>
+																																Добавьте
+																																Сессию
+																																в
+																																ваш
+																																календарь,
+																																чтобы
+																																не
+																																забыть!
+																															</p>
+																															<figure>
+																																<a
+																																	target="_blank"
+																																	href="https://calendar.google.com/calendar/event?action=TEMPLATE&amp;tmeid=NzZndGplN3RrbXA0M3M2OW1uOGhpMXVhb3EgMTg1NDE0NWY4NmUyOGU4YTJkYTVjNzg1NDM0MzBlZmExMjEyYTA4NzRiMmQ3NzY1MjVmZDBkZTRlMTlmZmQ5ZUBn&amp;tmsrc=1854145f86e28e8a2da5c78543430efa1212a0874b2d776525fd0de4e19ffd9e%40group.calendar.google.com"
+																																	style="
+																																		font-family: 'Open Sans',
+																																			Arial,
+																																			Helvetica,
+																																			sans-serif;
+																																		color: #09c269;
+																																		text-decoration: underline;
+																																	"
+																																	data-link-id="87254208337676204"
+																																	><img
+																																		src="https://www.google.com/calendar/images/ext/gc_button1_en.gif"
+																																/></a>
+																															</figure>
+																															<p
+																																style="
+																																	margin-top: 0px;
+																																	margin-bottom: 0px;
+																																	text-align: center;
+																																"
+																															>
+																																<span
+																																	><a
+																																		href="https://calendar.yandex.com/event/1849966572?applyToFuture=0&amp;event_date=2023-06-03T09%3A00%3A00&amp;layerId=5931175"
+																																		target="_blank"
+																																		style="
+																																			word-break: break-word;
+																																			font-family: 'Open Sans',
+																																				Arial,
+																																				Helvetica,
+																																				sans-serif;
+																																			color: #09c269;
+																																			text-decoration: underline;
+																																			font-family: 'Open Sans',
+																																				Arial,
+																																				Helvetica,
+																																				sans-serif;
+																																			background-color: #f44336;
+																																			border-bottom: 3px
+																																				solid
+																																				#ea281a;
+																																			border-radius: 5px;
+																																			color: #ffffff;
+																																			display: inline-block;
+																																			font-size: 10px;
+																																			font-weight: 700;
+																																			line-height: 20px;
+																																			padding: 2px
+																																				0
+																																				2px
+																																				0;
+																																			text-align: center;
+																																			text-decoration: none;
+																																			width: 111px;
+																																		"
+																																		data-link-id="87254208345016238"
+																																		>Яндекс
+																																		Календарь</a
+																																	></span
+																																>
+																															</p>
+																														</td>
+																													</tr>
+																												</tbody>
+																											</table>
 
-			
-			
-			
-		</td>
-	</tr>
-</tbody></table>
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		<td height="20" class="spacingHeight-20"></td>
-	</tr>
-</tbody></table>
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		<td align="center" style="padding: 0px 40px;" class="mlContentOuter">
-
-			<table role="presentation" cellpadding="0" align="center" width="100%" border="0">
-			<tbody><tr>
-			<td valign="top">
-
-			
-			
-
-
-				
-
-				
-				
-
-				
-
-				
-					
-
-					
-      
-					
-					  
-					
-				
-
-				 
-			        
-
-			        
-      
-
-			    
-			    
-			        
-
-			        
-			    
-
-			
-			<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="left" width="173" class="mlContentTable marginBottom" style="width: 173px; min-width: 173px;">
-				<tbody><tr>
-					<td align="left" id="imageBlock-20"><img src="../img/calendar-icon.png" width="65" border="0" alt="calendar" style="display: block;"></td>
-				</tr>
-				<tr>
-					<td height="20" class="spacingHeight-20"></td>
-				</tr>
-				<tr>
-					<td align="center" valign="top" class="bodyTitle" style="font-family: 'Open Sans', Arial, Helvetica, sans-serif; font-size: 16px; font-weight: 700; line-height: 150%; color: #111111; text-transform: none; font-style: normal; text-decoration: none;  text-align: left;">Напоминание в Календаре</td>
-				</tr>
-				<tr>
-					<td height="5" style="height: 5px; min-height: 5px; line-height: 5px;"></td>
-				</tr>
-				<tr>
-					<td align="left" class="bodyTitle" id="bodyText-20" style="font-family: 'Open Sans', Arial, Helvetica, sans-serif; font-size: 14px; line-height: 150%; color: #6f6f6f;"><p style="margin-top: 0px; margin-bottom: 10px;">Добавьте Сессию в ваш календарь, чтобы не забыть!</p>
-<figure><a target="_blank" href="https://calendar.google.com/calendar/event?action=TEMPLATE&amp;tmeid=NzZndGplN3RrbXA0M3M2OW1uOGhpMXVhb3EgMTg1NDE0NWY4NmUyOGU4YTJkYTVjNzg1NDM0MzBlZmExMjEyYTA4NzRiMmQ3NzY1MjVmZDBkZTRlMTlmZmQ5ZUBn&amp;tmsrc=1854145f86e28e8a2da5c78543430efa1212a0874b2d776525fd0de4e19ffd9e%40group.calendar.google.com" style="font-family: 'Open Sans', Arial, Helvetica, sans-serif; color: #09c269; text-decoration: underline;" data-link-id="87254208337676204"><img src="https://www.google.com/calendar/images/ext/gc_button1_en.gif"></a></figure>
-<p style="margin-top: 0px; margin-bottom: 0px; text-align: center;"><span><a href="https://calendar.yandex.com/event/1849966572?applyToFuture=0&amp;event_date=2023-06-03T09%3A00%3A00&amp;layerId=5931175" target="_blank" style="word-break: break-word;font-family: 'Open Sans', Arial, Helvetica, sans-serif;color: #09c269;text-decoration: underline;font-family: 'Open Sans', Arial, Helvetica, sans-serif;background-color: #F44336;border-bottom: 3px solid #ea281a;border-radius: 5px;color:#ffffff;display:inline-block;font-size: 10px;font-weight:700;line-height:20px;padding:2px 0 2px 0;text-align:center;text-decoration:none;width: 111px;" data-link-id="87254208345016238">Яндекс Календарь</a></span></p></td>
-				</tr>
-			</tbody></table>
-				
-			
-			
-
-			<!--[if mso]>
+																											<!--[if mso]>
 			</td>
 			<td width="20" valign="top">
 			<![endif]-->
-			<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="left" width="20" class="mobileHide" style="width: 20px; min-width: 20px;">
-				<tbody><tr>
-					<td width="20" height="20" align="center"></td>
-				</tr>
-			</tbody></table>
-			<!--[if mso]>
+																											<table
+																												role="presentation"
+																												cellpadding="0"
+																												cellspacing="0"
+																												border="0"
+																												align="left"
+																												width="20"
+																												class="mobileHide"
+																												style="
+																													width: 20px;
+																													min-width: 20px;
+																												"
+																											>
+																												<tbody>
+																													<tr>
+																														<td
+																															width="20"
+																															height="20"
+																															align="center"
+																														></td>
+																													</tr>
+																												</tbody>
+																											</table>
+																											<!--[if mso]>
 			</td>
 			<td width="173" valign="top">
 			<![endif]-->
 
-			
-			
+																											<table
+																												role="presentation"
+																												cellpadding="0"
+																												cellspacing="0"
+																												border="0"
+																												align="left"
+																												width="173"
+																												class="mlContentTable marginBottom"
+																												style="
+																													width: 173px;
+																													min-width: 173px;
+																												"
+																											>
+																												<tbody>
+																													<tr>
+																														<td
+																															align="left"
+																															id="imageBlock-21"
+																														>
+																															<img
+																																src="../img/telgram-logo.png"
+																																width="65"
+																																border="0"
+																																style="
+																																	display: block;
+																																"
+																															/>
+																														</td>
+																													</tr>
+																													<tr>
+																														<td
+																															height="20"
+																															class="spacingHeight-20"
+																														></td>
+																													</tr>
+																													<tr>
+																														<td
+																															align="center"
+																															valign="top"
+																															class="bodyTitle"
+																															style="
+																																font-family: 'Open Sans',
+																																	Arial,
+																																	Helvetica,
+																																	sans-serif;
+																																font-size: 16px;
+																																font-weight: 700;
+																																line-height: 150%;
+																																color: #111111;
+																																text-transform: none;
+																																font-style: normal;
+																																text-decoration: none;
+																																text-align: left;
+																															"
+																														>
+																															Приватный
+																															Telegram
+																															чат
+																														</td>
+																													</tr>
+																													<tr>
+																														<td
+																															height="5"
+																															style="
+																																height: 5px;
+																																min-height: 5px;
+																																line-height: 5px;
+																															"
+																														></td>
+																													</tr>
+																													<tr>
+																														<td
+																															align="left"
+																															class="bodyTitle"
+																															id="bodyText-21"
+																															style="
+																																font-family: 'Open Sans',
+																																	Arial,
+																																	Helvetica,
+																																	sans-serif;
+																																font-size: 14px;
+																																line-height: 150%;
+																																color: #6f6f6f;
+																															"
+																														>
+																															<p
+																																style="
+																																	margin-top: 0px;
+																																	margin-bottom: 10px;
+																																"
+																															>
+																																Обязательно
+																																вступите
+																																в
+																																телеграм
+																																чат
+																																с
+																																важной
+																																информацией
+																																🔥
+																															</p>
+																															<p
+																																style="
+																																	margin-top: 0px;
+																																	margin-bottom: 0px;
+																																	text-align: center;
+																																"
+																															>
+																																<span
+																																	><a
+																																		href="https://t.me/IshaEnglish"
+																																		style="
+																																			word-break: break-word;
+																																			font-family: 'Open Sans',
+																																				Arial,
+																																				Helvetica,
+																																				sans-serif;
+																																			color: #09c269;
+																																			text-decoration: underline;
+																																			font-family: 'Open Sans',
+																																				Arial,
+																																				Helvetica,
+																																				sans-serif;
+																																			background-color: #2da5d8;
+																																			border-bottom: 3px
+																																				solid
+																																				#266cd0;
+																																			border-radius: 11px;
+																																			color: #ffffff;
+																																			display: inline-block;
+																																			font-size: 12px;
+																																			font-weight: 700;
+																																			line-height: 20px;
+																																			padding: 2px
+																																				0
+																																				2px
+																																				0;
+																																			text-align: center;
+																																			text-decoration: none;
+																																			width: 110px;
+																																		"
+																																		data-link-id="87254208352356272"
+																																		>t.me/IshaEnglish</a
+																																	></span
+																																>
+																															</p>
+																														</td>
+																													</tr>
+																												</tbody>
+																											</table>
 
-
-				
-
-				
-				
-
-				
-
-				
-					
-
-					
-      
-					
-					  
-					
-				
-
-				 
-			        
-
-			        
-      
-
-			    
-			    
-			        
-
-			        
-			    
-
-			
-			<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="left" width="173" class="mlContentTable marginBottom" style="width: 173px; min-width: 173px;">
-				<tbody><tr>
-					<td align="left" id="imageBlock-21"><img src="../img/telgram-logo.png" width="65" border="0" style="display: block;"></td>
-				</tr>
-				<tr>
-					<td height="20" class="spacingHeight-20"></td>
-				</tr>
-				<tr>
-					<td align="center" valign="top" class="bodyTitle" style="font-family: 'Open Sans', Arial, Helvetica, sans-serif; font-size: 16px; font-weight: 700; line-height: 150%; color: #111111; text-transform: none; font-style: normal; text-decoration: none;  text-align: left;">Приватный Telegram чат</td>
-				</tr>
-				<tr>
-					<td height="5" style="height: 5px; min-height: 5px; line-height: 5px;"></td>
-				</tr>
-				<tr>
-					<td align="left" class="bodyTitle" id="bodyText-21" style="font-family: 'Open Sans', Arial, Helvetica, sans-serif; font-size: 14px; line-height: 150%; color: #6f6f6f;"><p style="margin-top: 0px; margin-bottom: 10px;">Обязательно вступите в телеграм чат с важной информацией 🔥</p>
-<p style="margin-top: 0px; margin-bottom: 0px; text-align: center;"><span><a href="https://t.me/IshaEnglish" style="word-break: break-word;font-family: 'Open Sans', Arial, Helvetica, sans-serif;color: #09c269;text-decoration: underline;font-family: 'Open Sans', Arial, Helvetica, sans-serif;background-color: #2da5d8;border-bottom: 3px solid #266cd0;border-radius:11px;color:#ffffff;display:inline-block;font-size:12px;font-weight:700;line-height:20px;padding:2px 0 2px 0;text-align:center;text-decoration:none;width:110px;" data-link-id="87254208352356272">t.me/IshaEnglish</a></span></p></td>
-				</tr>
-			</tbody></table>
-			
-			
-			
-
-			<!--[if mso]>
+																											<!--[if mso]>
 			</td>
 			<td valign="top" width="20">
 			<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="left" width="20" class="mobileHide" style="width: 20px; min-width: 20px;">
@@ -1817,207 +2780,342 @@
 
 			<![endif]-->
 
-			
-			
+																											<table
+																												role="presentation"
+																												cellpadding="0"
+																												cellspacing="0"
+																												border="0"
+																												align="right"
+																												width="173"
+																												class="mlContentTable"
+																												style="
+																													width: 173px;
+																													min-width: 173px;
+																												"
+																											>
+																												<tbody>
+																													<tr>
+																														<td
+																															align="left"
+																															id="imageBlock-22"
+																														>
+																															<img
+																																src="../img/people-icon.png"
+																																width="65"
+																																border="0"
+																																style="
+																																	display: block;
+																																"
+																															/>
+																														</td>
+																													</tr>
+																													<tr>
+																														<td
+																															height="20"
+																															class="spacingHeight-20"
+																														></td>
+																													</tr>
+																													<tr>
+																														<td
+																															align="center"
+																															valign="top"
+																															class="bodyTitle"
+																															style="
+																																font-family: 'Open Sans',
+																																	Arial,
+																																	Helvetica,
+																																	sans-serif;
+																																font-size: 16px;
+																																font-weight: 700;
+																																line-height: 150%;
+																																color: #111111;
+																																text-transform: none;
+																																font-style: normal;
+																																text-decoration: none;
+																																text-align: left;
+																															"
+																														>
+																															Расскажи
+																															друзьям!
+																														</td>
+																													</tr>
+																													<tr>
+																														<td
+																															height="5"
+																															style="
+																																height: 5px;
+																																min-height: 5px;
+																																line-height: 5px;
+																															"
+																														></td>
+																													</tr>
+																													<tr>
+																														<td
+																															align="left"
+																															class="bodyTitle"
+																															id="bodyText-22"
+																															style="
+																																font-family: 'Open Sans',
+																																	Arial,
+																																	Helvetica,
+																																	sans-serif;
+																																font-size: 14px;
+																																line-height: 150%;
+																																color: #6f6f6f;
+																															"
+																														>
+																															<p
+																																style="
+																																	margin-top: 0px;
+																																	margin-bottom: 0px;
+																																"
+																															>
+																																Это
+																																невероятная
+																																и
+																																бесплатня&nbsp;возможность,
+																																не
+																																стоит
+																																ли
+																																помочь
+																																другим
+																																узнать
+																																о
+																																ней?
+																															</p>
+																														</td>
+																													</tr>
+																												</tbody>
+																											</table>
+																										</td>
+																									</tr>
+																								</tbody>
+																							</table>
+																						</td>
+																					</tr>
+																				</tbody>
+																			</table>
 
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr>
+																						<td
+																							height="30"
+																							class="spacingHeight-30"
+																							style="
+																								line-height: 30px;
+																								min-height: 30px;
+																							"
+																						></td>
+																					</tr>
+																				</tbody>
+																			</table>
 
-				
+																			<!--[if mso]>
+																				<style
+																					type="text/css"
+																					move-to-head
+																				>
+																					@media screen and (min-width: 640px) {
+																						.hide-on-desktop {
+																							display: none;
+																							width: 0px;
+																							max-height: 0px;
+																							overflow: hidden;
+																							mso-hide: all;
+																							height: 0;
+																							font-size: 0;
+																							max-height: 0;
+																							line-height: 0;
+																							margin: 0
+																								auto;
+																						}
+																					}
+																				</style>
+																			<![endif]-->
+																		</td>
+																	</tr>
+																</tbody>
+															</table>
+														</td>
+													</tr>
+												</tbody>
+											</table>
+											<!--  -->
 
-				
-				
+											<!--  -->
+											<table
+												align="center"
+												border="0"
+												bgcolor="#fff7eb"
+												class="mlContentTable mlContentTableDefault"
+												cellpadding="0"
+												cellspacing="0"
+												width="640"
+											>
+												<tbody>
+													<tr>
+														<td
+															class="mlContentTableCardTd"
+														>
+															<table
+																align="center"
+																bgcolor="#fff7eb"
+																border="0"
+																cellpadding="0"
+																cellspacing="0"
+																class="mlContentTable ml-default"
+																style="
+																	width: 640px;
+																	min-width: 640px;
+																"
+																width="640"
+															>
+																<tbody>
+																	<tr>
+																		<td>
+																			<table
+																				role="presentation"
+																				cellpadding="0"
+																				cellspacing="0"
+																				border="0"
+																				align="center"
+																				width="640"
+																				style="
+																					width: 640px;
+																					min-width: 640px;
+																				"
+																				class="mlContentTable"
+																			>
+																				<tbody>
+																					<tr>
+																						<td
+																							align="center"
+																							style="
+																								padding: 0px
+																									0px;
+																							"
+																							class=""
+																						>
+																							<table
+																								role="presentation"
+																								cellpadding="0"
+																								cellspacing="0"
+																								border="0"
+																								align="center"
+																								width="100%"
+																							>
+																								<tbody>
+																									<tr>
+																										<td
+																											align="center"
+																											id="imageBlock-24"
+																										>
+																											<img
+																												src="../img/footer-flying-yogi.avif"
+																												border="0"
+																												alt=""
+																												width="640"
+																												style="
+																													display: block;
+																												"
+																											/>
+																										</td>
+																									</tr>
+																								</tbody>
+																							</table>
+																						</td>
+																					</tr>
+																				</tbody>
+																			</table>
+																		</td>
+																	</tr>
+																</tbody>
+															</table>
+														</td>
+													</tr>
+												</tbody>
+											</table>
+											<!--  -->
 
-				
+											<table
+												align="center"
+												border="0"
+												bgcolor="#ffffff"
+												class="mlContentTable mlContentTableFooterDefault"
+												cellpadding="0"
+												cellspacing="0"
+												width="640"
+											>
+												<tbody>
+													<tr>
+														<td
+															class="mlContentTableFooterCardTd"
+														>
+															<table
+																align="center"
+																bgcolor="#ffffff"
+																border="0"
+																cellpadding="0"
+																cellspacing="0"
+																class="mlContentTable ml-default"
+																style="
+																	width: 640px;
+																	min-width: 640px;
+																"
+																width="640"
+															></table>
+														</td>
+													</tr>
+												</tbody>
+											</table>
+										</td>
+									</tr>
+								</tbody>
+							</table>
 
-				
-					
+							<table
+								cellpadding="0"
+								cellspacing="0"
+								border="0"
+								align="center"
+								width="640"
+								style="width: 640px; min-width: 640px"
+								class="mlContentTable"
+							></table>
 
-					
-      
-					
-					  
-					
-				
+							<!-- Content ends here -->
 
-				 
-			        
-
-			        
-      
-
-			    
-			    
-			        
-
-			        
-			    
-
-			
-			<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="right" width="173" class="mlContentTable" style="width: 173px; min-width: 173px;">
-				<tbody><tr>
-					<td align="left" id="imageBlock-22"><img src="../img/people-icon.png" width="65" border="0" style="display: block;"></td>
-				</tr>
-				<tr>
-					<td height="20" class="spacingHeight-20"></td>
-				</tr>
-				<tr>
-					<td align="center" valign="top" class="bodyTitle" style="font-family: 'Open Sans', Arial, Helvetica, sans-serif; font-size: 16px; font-weight: 700; line-height: 150%; color: #111111; text-transform: none; font-style: normal; text-decoration: none;  text-align: left;">Расскажи друзьям!</td>
-				</tr>
-				<tr>
-					<td height="5" style="height: 5px; min-height: 5px; line-height: 5px;"></td>
-				</tr>
-				<tr>
-					<td align="left" class="bodyTitle" id="bodyText-22" style="font-family: 'Open Sans', Arial, Helvetica, sans-serif; font-size: 14px; line-height: 150%; color: #6f6f6f;"><p style="margin-top: 0px; margin-bottom: 0px;">Это невероятная и бесплатня&nbsp;возможность, не стоит ли помочь другим узнать о ней?</p></td>
-				</tr>
-			</tbody></table>
-			
-			
-			
-
-			</td>
-			</tr>
-			</tbody></table>
-
-		</td>
-	</tr>
-</tbody></table>
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		<td height="30" class="spacingHeight-30" style="line-height: 30px; min-height: 30px;"></td>
-	</tr>
-</tbody></table>
-
-
-
-<!--[if mso]>
-<style type="text/css" move-to-head>
-@media screen and (min-width: 640px) {
-  .hide-on-desktop {
-    display:none;width:0px;max-height:0px;overflow:hidden;mso-hide:all;height:0;font-size:0;max-height:0;line-height:0;margin:0 auto;
-  }
-}
-</style>
-<![endif]-->
-
-
-              
-          </td>
-        </tr>
-      </tbody></table>
-
-    </td>
-  </tr>
-</tbody></table>
-<!--  -->
-
-
-  <!--  -->
-<table align="center" border="0" bgcolor="#fff7eb" class="mlContentTable mlContentTableDefault" cellpadding="0" cellspacing="0" width="640">
-  <tbody><tr>
-    <td class="mlContentTableCardTd">
-
-      <table align="center" bgcolor="#fff7eb" border="0" cellpadding="0" cellspacing="0" class="mlContentTable ml-default   " style="width: 640px; min-width: 640px;" width="640">
-        <tbody><tr>
-          <td>
-            
-
-  
-  
-	
-	
-
-  	
-  	
-
-
-
-  	
-	
-
-	
-
-
-  	
-		
-	  	
-  	
-
-    
-
-
-
-
-
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable ">
-	<tbody><tr>
-		<td align="center" style="padding: 0px 0px;" class="">
-
-			<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="100%">
-				<tbody><tr>
-					<td align="center" id="imageBlock-24">
-            <img src="../img/footer-flying-yogi.avif" border="0" alt="" width="640" style="display: block;">
-          </td>
-				</tr>
-			</tbody></table>
-
-		</td>
-	</tr>
-</tbody></table>
-
-
-
-
-
-              
-          </td>
-        </tr>
-      </tbody></table>
-
-    </td>
-  </tr>
-</tbody></table>
-<!--  -->
-
-
-
-<table align="center" border="0" bgcolor="#ffffff" class="mlContentTable mlContentTableFooterDefault" cellpadding="0" cellspacing="0" width="640">
-  <tbody><tr>
-    <td class="mlContentTableFooterCardTd">
-
-      <table align="center" bgcolor="#ffffff" border="0" cellpadding="0" cellspacing="0" class="mlContentTable ml-default   " style="width: 640px; min-width: 640px;" width="640">
-        </table>
-
-    </td>
-  </tr>
-</tbody></table>
-
-
-
-          </td>
-        </tr>
-
-      </tbody></table>
-
-      <table cellpadding="0" cellspacing="0" border="0" align="center" width="640" style="width: 640px; min-width: 640px;" class="mlContentTable">
-  </table>
-
-
-      <!-- Content ends here -->
-
-      <!--[if mso 16]>
+							<!--[if mso 16]>
       </td>
       </tr>
       </table>
       <!--<![endif]-->
 
-      <!--[if !mso]><!-- -->
-    </td>
-  </tr>
-</tbody></table>
-<!--<![endif]-->
+							<!--[if !mso]><!-- -->
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			<!--<![endif]-->
+		</div>
 
-</div>
-
-<div id="tldx-toast-container" bis_skin_checked="1"></div><div id="tldx-webext-container" bis_skin_checked="1"></div><tldv-webext-integration id="tldx-lmi-shadow-root"></tldv-webext-integration>
-
-</body></html>
+		<div id="tldx-toast-container" bis_skin_checked="1"></div>
+		<div id="tldx-webext-container" bis_skin_checked="1"></div>
+		<tldv-webext-integration
+			id="tldx-lmi-shadow-root"
+		></tldv-webext-integration>
+	</body>
+</html>
