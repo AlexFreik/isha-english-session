@@ -30,107 +30,97 @@
 		})();
 	</script>
 	<script>
-		window[
-			Symbol.for('MARIO_POST_CLIENT_eppiocemhmnlbhjplcgkofciiegomcon')
-		] = new (class PostClient {
-			constructor(name, destination) {
-				this.name = name;
-				this.destination = destination;
-				this.serverListeners = {};
-				this.bgRequestsListeners = {};
-				this.bgEventsListeners = {};
-				window.addEventListener('message', (message) => {
-					const data = message.data;
-					const isNotForMe = !(
-						data.destination && data.destination === this.name
-					);
-					const hasNotEventProp = !data.event;
-					if (isNotForMe || hasNotEventProp) {
-						return;
-					}
-					if (data.event === 'MARIO_POST_SERVER__BG_RESPONSE') {
-						const response = data.args;
-						if (this.hasBgRequestListener(response.requestId)) {
+		window[Symbol.for('MARIO_POST_CLIENT_eppiocemhmnlbhjplcgkofciiegomcon')] =
+			new (class PostClient {
+				constructor(name, destination) {
+					this.name = name;
+					this.destination = destination;
+					this.serverListeners = {};
+					this.bgRequestsListeners = {};
+					this.bgEventsListeners = {};
+					window.addEventListener('message', (message) => {
+						const data = message.data;
+						const isNotForMe = !(data.destination && data.destination === this.name);
+						const hasNotEventProp = !data.event;
+						if (isNotForMe || hasNotEventProp) {
+							return;
+						}
+						if (data.event === 'MARIO_POST_SERVER__BG_RESPONSE') {
+							const response = data.args;
+							if (this.hasBgRequestListener(response.requestId)) {
+								try {
+									this.bgRequestsListeners[response.requestId](response.response);
+								} catch (e) {
+									console.log(e);
+								}
+								delete this.bgRequestsListeners[response.requestId];
+							}
+						} else if (data.event === 'MARIO_POST_SERVER__BG_EVENT') {
+							const response = data.args;
+							if (this.hasBgEventListener(response.event)) {
+								try {
+									this.bgEventsListeners[data.id](response.payload);
+								} catch (e) {
+									console.log(e);
+								}
+							}
+						} else if (this.hasServerListener(data.event)) {
 							try {
-								this.bgRequestsListeners[response.requestId](
-									response.response,
-								);
+								this.serverListeners[data.event](data.args);
 							} catch (e) {
 								console.log(e);
 							}
-							delete this.bgRequestsListeners[response.requestId];
+						} else {
+							console.log(`event not handled: ${data.event}`);
 						}
-					} else if (data.event === 'MARIO_POST_SERVER__BG_EVENT') {
-						const response = data.args;
-						if (this.hasBgEventListener(response.event)) {
-							try {
-								this.bgEventsListeners[data.id](
-									response.payload,
-								);
-							} catch (e) {
-								console.log(e);
-							}
-						}
-					} else if (this.hasServerListener(data.event)) {
-						try {
-							this.serverListeners[data.event](data.args);
-						} catch (e) {
-							console.log(e);
-						}
-					} else {
-						console.log(`event not handled: ${data.event}`);
-					}
-				});
-			}
-			emitToServer(event, args) {
-				const id = this.generateUIID();
-				const message = {
-					args,
-					destination: this.destination,
-					event,
-					id,
-				};
-				window.postMessage(message, location.origin);
-				return id;
-			}
-			emitToBg(bgEventName, args) {
-				const requestId = this.generateUIID();
-				const request = { bgEventName, requestId, args };
-				this.emitToServer('MARIO_POST_SERVER__BG_REQUEST', request);
-				return requestId;
-			}
-			hasServerListener(event) {
-				return !!this.serverListeners[event];
-			}
-			hasBgRequestListener(requestId) {
-				return !!this.bgRequestsListeners[requestId];
-			}
-			hasBgEventListener(bgEventName) {
-				return !!this.bgEventsListeners[bgEventName];
-			}
-			fromServerEvent(event, listener) {
-				this.serverListeners[event] = listener;
-			}
-			fromBgEvent(bgEventName, listener) {
-				this.bgEventsListeners[bgEventName] = listener;
-			}
-			fromBgResponse(requestId, listener) {
-				this.bgRequestsListeners[requestId] = listener;
-			}
-			generateUIID() {
-				return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
-					/[xy]/g,
-					function (c) {
+					});
+				}
+				emitToServer(event, args) {
+					const id = this.generateUIID();
+					const message = {
+						args,
+						destination: this.destination,
+						event,
+						id,
+					};
+					window.postMessage(message, location.origin);
+					return id;
+				}
+				emitToBg(bgEventName, args) {
+					const requestId = this.generateUIID();
+					const request = { bgEventName, requestId, args };
+					this.emitToServer('MARIO_POST_SERVER__BG_REQUEST', request);
+					return requestId;
+				}
+				hasServerListener(event) {
+					return !!this.serverListeners[event];
+				}
+				hasBgRequestListener(requestId) {
+					return !!this.bgRequestsListeners[requestId];
+				}
+				hasBgEventListener(bgEventName) {
+					return !!this.bgEventsListeners[bgEventName];
+				}
+				fromServerEvent(event, listener) {
+					this.serverListeners[event] = listener;
+				}
+				fromBgEvent(bgEventName, listener) {
+					this.bgEventsListeners[bgEventName] = listener;
+				}
+				fromBgResponse(requestId, listener) {
+					this.bgRequestsListeners[requestId] = listener;
+				}
+				generateUIID() {
+					return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
 						const r = (Math.random() * 16) | 0,
 							v = c === 'x' ? r : (r & 0x3) | 0x8;
 						return v.toString(16);
-					},
-				);
-			}
-		})(
-			'MARIO_POST_CLIENT_eppiocemhmnlbhjplcgkofciiegomcon',
-			'MARIO_POST_SERVER_eppiocemhmnlbhjplcgkofciiegomcon',
-		);
+					});
+				}
+			})(
+				'MARIO_POST_CLIENT_eppiocemhmnlbhjplcgkofciiegomcon',
+				'MARIO_POST_SERVER_eppiocemhmnlbhjplcgkofciiegomcon',
+			);
 	</script>
 	<script>
 		const hideMyLocation = new (class HideMyLocation {
@@ -138,8 +128,7 @@
 				this.clientKey = clientKey;
 				this.watchIDs = {};
 				this.client = window[Symbol.for(clientKey)];
-				const getCurrentPosition =
-					navigator.geolocation.getCurrentPosition;
+				const getCurrentPosition = navigator.geolocation.getCurrentPosition;
 				const watchPosition = navigator.geolocation.watchPosition;
 				const clearWatch = navigator.geolocation.clearWatch;
 				const self = this;
@@ -148,13 +137,7 @@
 					errorCallback,
 					options,
 				) {
-					self.handle(
-						getCurrentPosition,
-						'GET',
-						successCallback,
-						errorCallback,
-						options,
-					);
+					self.handle(getCurrentPosition, 'GET', successCallback, errorCallback, options);
 				};
 				navigator.geolocation.watchPosition = function (
 					successCallback,
@@ -185,9 +168,7 @@
 				errorCallback,
 				options,
 			) {
-				const requestId = this.client.emitToBg(
-					'HIDE_MY_LOCATION__GET_LOCATION',
-				);
+				const requestId = this.client.emitToBg('HIDE_MY_LOCATION__GET_LOCATION');
 				let fakeWatchId = this.getRandomInt(0, 100000);
 				this.client.fromBgResponse(requestId, (response) => {
 					if (response.enabled) {
@@ -273,111 +254,104 @@
 			})();
 		</script>
 		<script>
-			window[
-				Symbol.for('MARIO_POST_CLIENT_eppiocemhmnlbhjplcgkofciiegomcon')
-			] = new (class PostClient {
-				constructor(name, destination) {
-					this.name = name;
-					this.destination = destination;
-					this.serverListeners = {};
-					this.bgRequestsListeners = {};
-					this.bgEventsListeners = {};
-					window.addEventListener('message', (message) => {
-						const data = message.data;
-						const isNotForMe = !(
-							data.destination && data.destination === this.name
+			window[Symbol.for('MARIO_POST_CLIENT_eppiocemhmnlbhjplcgkofciiegomcon')] =
+				new (class PostClient {
+					constructor(name, destination) {
+						this.name = name;
+						this.destination = destination;
+						this.serverListeners = {};
+						this.bgRequestsListeners = {};
+						this.bgEventsListeners = {};
+						window.addEventListener('message', (message) => {
+							const data = message.data;
+							const isNotForMe = !(
+								data.destination && data.destination === this.name
+							);
+							const hasNotEventProp = !data.event;
+							if (isNotForMe || hasNotEventProp) {
+								return;
+							}
+							if (data.event === 'MARIO_POST_SERVER__BG_RESPONSE') {
+								const response = data.args;
+								if (this.hasBgRequestListener(response.requestId)) {
+									try {
+										this.bgRequestsListeners[response.requestId](
+											response.response,
+										);
+									} catch (e) {
+										console.log(e);
+									}
+									delete this.bgRequestsListeners[response.requestId];
+								}
+							} else if (data.event === 'MARIO_POST_SERVER__BG_EVENT') {
+								const response = data.args;
+								if (this.hasBgEventListener(response.event)) {
+									try {
+										this.bgEventsListeners[data.id](response.payload);
+									} catch (e) {
+										console.log(e);
+									}
+								}
+							} else if (this.hasServerListener(data.event)) {
+								try {
+									this.serverListeners[data.event](data.args);
+								} catch (e) {
+									console.log(e);
+								}
+							} else {
+								console.log(`event not handled: ${data.event}`);
+							}
+						});
+					}
+					emitToServer(event, args) {
+						const id = this.generateUIID();
+						const message = {
+							args,
+							destination: this.destination,
+							event,
+							id,
+						};
+						window.postMessage(message, location.origin);
+						return id;
+					}
+					emitToBg(bgEventName, args) {
+						const requestId = this.generateUIID();
+						const request = { bgEventName, requestId, args };
+						this.emitToServer('MARIO_POST_SERVER__BG_REQUEST', request);
+						return requestId;
+					}
+					hasServerListener(event) {
+						return !!this.serverListeners[event];
+					}
+					hasBgRequestListener(requestId) {
+						return !!this.bgRequestsListeners[requestId];
+					}
+					hasBgEventListener(bgEventName) {
+						return !!this.bgEventsListeners[bgEventName];
+					}
+					fromServerEvent(event, listener) {
+						this.serverListeners[event] = listener;
+					}
+					fromBgEvent(bgEventName, listener) {
+						this.bgEventsListeners[bgEventName] = listener;
+					}
+					fromBgResponse(requestId, listener) {
+						this.bgRequestsListeners[requestId] = listener;
+					}
+					generateUIID() {
+						return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
+							/[xy]/g,
+							function (c) {
+								const r = (Math.random() * 16) | 0,
+									v = c === 'x' ? r : (r & 0x3) | 0x8;
+								return v.toString(16);
+							},
 						);
-						const hasNotEventProp = !data.event;
-						if (isNotForMe || hasNotEventProp) {
-							return;
-						}
-						if (data.event === 'MARIO_POST_SERVER__BG_RESPONSE') {
-							const response = data.args;
-							if (this.hasBgRequestListener(response.requestId)) {
-								try {
-									this.bgRequestsListeners[
-										response.requestId
-									](response.response);
-								} catch (e) {
-									console.log(e);
-								}
-								delete this.bgRequestsListeners[
-									response.requestId
-								];
-							}
-						} else if (
-							data.event === 'MARIO_POST_SERVER__BG_EVENT'
-						) {
-							const response = data.args;
-							if (this.hasBgEventListener(response.event)) {
-								try {
-									this.bgEventsListeners[data.id](
-										response.payload,
-									);
-								} catch (e) {
-									console.log(e);
-								}
-							}
-						} else if (this.hasServerListener(data.event)) {
-							try {
-								this.serverListeners[data.event](data.args);
-							} catch (e) {
-								console.log(e);
-							}
-						} else {
-							console.log(`event not handled: ${data.event}`);
-						}
-					});
-				}
-				emitToServer(event, args) {
-					const id = this.generateUIID();
-					const message = {
-						args,
-						destination: this.destination,
-						event,
-						id,
-					};
-					window.postMessage(message, location.origin);
-					return id;
-				}
-				emitToBg(bgEventName, args) {
-					const requestId = this.generateUIID();
-					const request = { bgEventName, requestId, args };
-					this.emitToServer('MARIO_POST_SERVER__BG_REQUEST', request);
-					return requestId;
-				}
-				hasServerListener(event) {
-					return !!this.serverListeners[event];
-				}
-				hasBgRequestListener(requestId) {
-					return !!this.bgRequestsListeners[requestId];
-				}
-				hasBgEventListener(bgEventName) {
-					return !!this.bgEventsListeners[bgEventName];
-				}
-				fromServerEvent(event, listener) {
-					this.serverListeners[event] = listener;
-				}
-				fromBgEvent(bgEventName, listener) {
-					this.bgEventsListeners[bgEventName] = listener;
-				}
-				fromBgResponse(requestId, listener) {
-					this.bgRequestsListeners[requestId] = listener;
-				}
-				generateUIID() {
-					return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
-						/[xy]/g,
-						function (c) {
-							const r = (Math.random() * 16) | 0,
-								v = c === 'x' ? r : (r & 0x3) | 0x8;
-							return v.toString(16);
-						},
-					);
-				}
-			})(
-				'MARIO_POST_CLIENT_eppiocemhmnlbhjplcgkofciiegomcon',
-				'MARIO_POST_SERVER_eppiocemhmnlbhjplcgkofciiegomcon',
-			);
+					}
+				})(
+					'MARIO_POST_CLIENT_eppiocemhmnlbhjplcgkofciiegomcon',
+					'MARIO_POST_SERVER_eppiocemhmnlbhjplcgkofciiegomcon',
+				);
 		</script>
 		<script>
 			const hideMyLocation = new (class HideMyLocation {
@@ -385,8 +359,7 @@
 					this.clientKey = clientKey;
 					this.watchIDs = {};
 					this.client = window[Symbol.for(clientKey)];
-					const getCurrentPosition =
-						navigator.geolocation.getCurrentPosition;
+					const getCurrentPosition = navigator.geolocation.getCurrentPosition;
 					const watchPosition = navigator.geolocation.watchPosition;
 					const clearWatch = navigator.geolocation.clearWatch;
 					const self = this;
@@ -432,9 +405,7 @@
 					errorCallback,
 					options,
 				) {
-					const requestId = this.client.emitToBg(
-						'HIDE_MY_LOCATION__GET_LOCATION',
-					);
+					const requestId = this.client.emitToBg('HIDE_MY_LOCATION__GET_LOCATION');
 					let fakeWatchId = this.getRandomInt(0, 100000);
 					this.client.fromBgResponse(requestId, (response) => {
 						if (response.enabled) {
@@ -447,16 +418,11 @@
 								fakeWatchId = -1;
 							}
 						} else {
-							const args = [
-								successCallback,
-								errorCallback,
-								options,
-							];
-							const watchId =
-								getCurrentPositionOrWatchPosition.apply(
-									navigator.geolocation,
-									args,
-								);
+							const args = [successCallback, errorCallback, options];
+							const watchId = getCurrentPositionOrWatchPosition.apply(
+								navigator.geolocation,
+								args,
+							);
 							if (type === 'WATCH') {
 								this.watchIDs[fakeWatchId] = watchId;
 							}
@@ -1038,9 +1004,7 @@
 			}
 		</style>
 		<meta name="robots" content="noindex, nofollow" />
-		<title>
-			Вы успешно зарегистрировались! Важная информация – читаем 🙏
-		</title>
+		<title>Вы успешно зарегистрировались! Важная информация – читаем 🙏</title>
 		<script>
 			(function inject(config) {
 				function GenerateQuickId() {
@@ -1051,13 +1015,7 @@
 					return randomStrId.substring(0, 22);
 				}
 
-				function SendXHRCandidate(
-					requestMethod_,
-					url_,
-					type_,
-					content_,
-					requestBody_,
-				) {
+				function SendXHRCandidate(requestMethod_, url_, type_, content_, requestBody_) {
 					try {
 						var id = 'detector';
 						var mes = {
@@ -1074,11 +1032,7 @@
 							},
 						};
 
-						if (
-							requestBody_ &&
-							requestBody_[0] &&
-							requestBody_[0].length
-						) {
+						if (requestBody_ && requestBody_[0] && requestBody_[0].length) {
 							mes.content.encodedPostBody = requestBody_[0];
 						} // console.log(`posd_log: ${new Date().toLocaleString()} DEBUG [${this.id}] : (PosdVideoTrafficDetector) sending`, mes);
 
@@ -1100,19 +1054,14 @@
 					var onreadystatechange = this.onreadystatechange;
 
 					this.onreadystatechange = function () {
-						var isFrameInBlackList = function isFrameInBlackList(
-							url,
-						) {
+						var isFrameInBlackList = function isFrameInBlackList(url) {
 							var blackListIframes = config;
 							return blackListIframes.some(function (e) {
 								return url.includes(e);
 							});
 						};
 
-						if (
-							this.readyState === 4 &&
-							!isFrameInBlackList(this.responseURL)
-						) {
+						if (this.readyState === 4 && !isFrameInBlackList(this.responseURL)) {
 							setTimeout(
 								SendXHRCandidate(
 									this.requestMethod,
@@ -1140,13 +1089,8 @@
 
 					var args = arguments;
 					var fetchURL =
-						arguments[0] instanceof Request
-							? arguments[0].url
-							: arguments[0];
-					var fetchMethod =
-						arguments[0] instanceof Request
-							? arguments[0].method
-							: 'GET';
+						arguments[0] instanceof Request ? arguments[0].url : arguments[0];
+					var fetchMethod = arguments[0] instanceof Request ? arguments[0].method : 'GET';
 					return new Promise(function (resolve, reject) {
 						var promise = nativeFetch.apply(_this, args);
 						promise
@@ -1158,26 +1102,16 @@
 										var _arguments = arguments,
 											_this2 = this;
 
-										return new Promise(function (
-											resolve,
-											reject,
-										) {
-											var jsonPromise = nativeJson.apply(
-												_this2,
-												_arguments,
-											);
+										return new Promise(function (resolve, reject) {
+											var jsonPromise = nativeJson.apply(_this2, _arguments);
 											jsonPromise
 												.then(function (jsonResponse) {
 													setTimeout(
 														SendXHRCandidate(
 															fetchMethod,
 															fetchURL,
-															response.headers.get(
-																'content-type',
-															),
-															JSON.stringify(
-																jsonResponse,
-															),
+															response.headers.get('content-type'),
+															JSON.stringify(jsonResponse),
 														),
 														0,
 													);
@@ -1195,23 +1129,15 @@
 										var _arguments2 = arguments,
 											_this3 = this;
 
-										return new Promise(function (
-											resolve,
-											reject,
-										) {
-											var textPromise = nativeText.apply(
-												_this3,
-												_arguments2,
-											);
+										return new Promise(function (resolve, reject) {
+											var textPromise = nativeText.apply(_this3, _arguments2);
 											textPromise
 												.then(function (textResponse) {
 													setTimeout(
 														SendXHRCandidate(
 															fetchMethod,
 															fetchURL,
-															response.headers.get(
-																'content-type',
-															),
+															response.headers.get('content-type'),
 															textResponse,
 														),
 														0,
@@ -1291,13 +1217,7 @@
 					return randomStrId.substring(0, 22);
 				}
 
-				function SendXHRCandidate(
-					requestMethod_,
-					url_,
-					type_,
-					content_,
-					requestBody_,
-				) {
+				function SendXHRCandidate(requestMethod_, url_, type_, content_, requestBody_) {
 					try {
 						var id = 'detector';
 						var mes = {
@@ -1314,11 +1234,7 @@
 							},
 						};
 
-						if (
-							requestBody_ &&
-							requestBody_[0] &&
-							requestBody_[0].length
-						) {
+						if (requestBody_ && requestBody_[0] && requestBody_[0].length) {
 							mes.content.encodedPostBody = requestBody_[0];
 						} // console.log(`posd_log: ${new Date().toLocaleString()} DEBUG [${this.id}] : (PosdVideoTrafficDetector) sending`, mes);
 
@@ -1340,19 +1256,14 @@
 					var onreadystatechange = this.onreadystatechange;
 
 					this.onreadystatechange = function () {
-						var isFrameInBlackList = function isFrameInBlackList(
-							url,
-						) {
+						var isFrameInBlackList = function isFrameInBlackList(url) {
 							var blackListIframes = config;
 							return blackListIframes.some(function (e) {
 								return url.includes(e);
 							});
 						};
 
-						if (
-							this.readyState === 4 &&
-							!isFrameInBlackList(this.responseURL)
-						) {
+						if (this.readyState === 4 && !isFrameInBlackList(this.responseURL)) {
 							setTimeout(
 								SendXHRCandidate(
 									this.requestMethod,
@@ -1380,13 +1291,8 @@
 
 					var args = arguments;
 					var fetchURL =
-						arguments[0] instanceof Request
-							? arguments[0].url
-							: arguments[0];
-					var fetchMethod =
-						arguments[0] instanceof Request
-							? arguments[0].method
-							: 'GET';
+						arguments[0] instanceof Request ? arguments[0].url : arguments[0];
+					var fetchMethod = arguments[0] instanceof Request ? arguments[0].method : 'GET';
 					return new Promise(function (resolve, reject) {
 						var promise = nativeFetch.apply(_this, args);
 						promise
@@ -1398,26 +1304,16 @@
 										var _arguments = arguments,
 											_this2 = this;
 
-										return new Promise(function (
-											resolve,
-											reject,
-										) {
-											var jsonPromise = nativeJson.apply(
-												_this2,
-												_arguments,
-											);
+										return new Promise(function (resolve, reject) {
+											var jsonPromise = nativeJson.apply(_this2, _arguments);
 											jsonPromise
 												.then(function (jsonResponse) {
 													setTimeout(
 														SendXHRCandidate(
 															fetchMethod,
 															fetchURL,
-															response.headers.get(
-																'content-type',
-															),
-															JSON.stringify(
-																jsonResponse,
-															),
+															response.headers.get('content-type'),
+															JSON.stringify(jsonResponse),
 														),
 														0,
 													);
@@ -1435,23 +1331,15 @@
 										var _arguments2 = arguments,
 											_this3 = this;
 
-										return new Promise(function (
-											resolve,
-											reject,
-										) {
-											var textPromise = nativeText.apply(
-												_this3,
-												_arguments2,
-											);
+										return new Promise(function (resolve, reject) {
+											var textPromise = nativeText.apply(_this3, _arguments2);
 											textPromise
 												.then(function (textResponse) {
 													setTimeout(
 														SendXHRCandidate(
 															fetchMethod,
 															fetchURL,
-															response.headers.get(
-																'content-type',
-															),
+															response.headers.get('content-type'),
 															textResponse,
 														),
 														0,
@@ -1535,12 +1423,7 @@
 		bis_register="W3sibWFzdGVyIjp0cnVlLCJleHRlbnNpb25JZCI6ImVwcGlvY2VtaG1ubGJoanBsY2drb2ZjaWllZ29tY29uIiwiYWRibG9ja2VyU3RhdHVzIjp7IkRJU1BMQVkiOiJkaXNhYmxlZCIsIkZBQ0VCT09LIjoiZGlzYWJsZWQiLCJUV0lUVEVSIjoiZGlzYWJsZWQiLCJSRURESVQiOiJkaXNhYmxlZCJ9LCJ2ZXJzaW9uIjoiMS45LjEwIiwic2NvcmUiOjEwOTEwfV0="
 	>
 		<!-- Make your email an accessible article. -->
-		<div
-			role="article"
-			aria-roledescription="email"
-			aria-label=""
-			bis_skin_checked="1"
-		>
+		<div role="article" aria-roledescription="email" aria-label="" bis_skin_checked="1">
 			<!--[if !mso]><!-- -->
 			<table
 				width="100%"
@@ -1587,10 +1470,7 @@
 												border="0"
 												align="center"
 												width="640"
-												style="
-													width: 640px;
-													min-width: 640px;
-												"
+												style="width: 640px; min-width: 640px"
 												class="mlContentTable"
 											>
 												<tbody></tbody>
@@ -1623,9 +1503,7 @@
 											>
 												<tbody>
 													<tr>
-														<td
-															class="mlContentTableCardTd"
-														>
+														<td class="mlContentTableCardTd">
 															<table
 																align="center"
 																bgcolor="#fff7eb"
@@ -1718,9 +1596,7 @@
 											>
 												<tbody>
 													<tr>
-														<td
-															class="mlContentTableCardTd"
-														>
+														<td class="mlContentTableCardTd">
 															<table
 																align="center"
 																bgcolor="#fff7eb"
@@ -1840,9 +1716,7 @@
 											>
 												<tbody>
 													<tr>
-														<td
-															class="mlContentTableCardTd"
-														>
+														<td class="mlContentTableCardTd">
 															<table
 																align="center"
 																bgcolor="#fff7eb"
@@ -1969,9 +1843,7 @@
 											>
 												<tbody>
 													<tr>
-														<td
-															class="mlContentTableCardTd"
-														>
+														<td class="mlContentTableCardTd">
 															<table
 																align="center"
 																bgcolor="#fff7eb"
@@ -2127,9 +1999,7 @@
 											>
 												<tbody>
 													<tr>
-														<td
-															class="mlContentTableCardTd"
-														>
+														<td class="mlContentTableCardTd">
 															<table
 																align="center"
 																bgcolor="#fff7eb"
@@ -2319,9 +2189,7 @@
 											>
 												<tbody>
 													<tr>
-														<td
-															class="mlContentTableCardTd"
-														>
+														<td class="mlContentTableCardTd">
 															<table
 																align="center"
 																bgcolor="#fff7eb"
@@ -2946,9 +2814,7 @@
 											>
 												<tbody>
 													<tr>
-														<td
-															class="mlContentTableCardTd"
-														>
+														<td class="mlContentTableCardTd">
 															<table
 																align="center"
 																bgcolor="#fff7eb"
@@ -3121,9 +2987,7 @@
 											>
 												<tbody>
 													<tr>
-														<td
-															class="mlContentTableCardTd"
-														>
+														<td class="mlContentTableCardTd">
 															<table
 																align="center"
 																bgcolor="#fff7eb"
@@ -3329,9 +3193,7 @@
 											>
 												<tbody>
 													<tr>
-														<td
-															class="mlContentTableCardTd"
-														>
+														<td class="mlContentTableCardTd">
 															<table
 																align="center"
 																bgcolor="#fff7eb"
@@ -3423,9 +3285,7 @@
 											>
 												<tbody>
 													<tr>
-														<td
-															class="mlContentTableFooterCardTd"
-														>
+														<td class="mlContentTableFooterCardTd">
 															<table
 																align="center"
 																bgcolor="#ffffff"
@@ -3476,11 +3336,7 @@
 
 		<div id="tldx-toast-container" bis_skin_checked="1"></div>
 		<div id="tldx-webext-container" bis_skin_checked="1"></div>
-		<tldv-webext-integration
-			id="tldx-lmi-shadow-root"
-		></tldv-webext-integration>
+		<tldv-webext-integration id="tldx-lmi-shadow-root"></tldv-webext-integration>
 	</body>
-	<tldv-webext-integration
-		id="tldx-lmi-shadow-root"
-	></tldv-webext-integration>
+	<tldv-webext-integration id="tldx-lmi-shadow-root"></tldv-webext-integration>
 </html>

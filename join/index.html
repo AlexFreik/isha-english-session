@@ -24,23 +24,9 @@
 			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
 		/>
 
-		<link
-			rel="apple-touch-icon"
-			sizes="180x180"
-			href="/apple-touch-icon.png"
-		/>
-		<link
-			rel="icon"
-			type="image/png"
-			sizes="32x32"
-			href="/favicon-32x32.png"
-		/>
-		<link
-			rel="icon"
-			type="image/png"
-			sizes="16x16"
-			href="/favicon-16x16.png"
-		/>
+		<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+		<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+		<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
 		<link rel="manifest" href="/site.webmanifest" />
 		<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5" />
 	</head>
@@ -58,9 +44,7 @@
 
 			<script>
 				// Set the date we're counting down to
-				var countDownDate = new Date(
-					'2023-06-03T12:00:00.000+03:00',
-				).getTime();
+				var countDownDate = new Date('2023-06-03T12:00:00.000+03:00').getTime();
 
 				// Update the count down every 1 second
 				var x = setInterval(function () {
@@ -72,12 +56,8 @@
 
 					// Time calculations for days, hours, minutes and seconds
 					var days = Math.floor(distance / (1000 * 60 * 60 * 24));
-					var hours = Math.floor(
-						(distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
-					);
-					var minutes = Math.floor(
-						(distance % (1000 * 60 * 60)) / (1000 * 60),
-					);
+					var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+					var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
 					var seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
 					// Output the result in an element with id="demo"
@@ -102,40 +82,30 @@
 				<div class="description">
 					<div class="hero-header">Isha English Сессия</div>
 					<div style="margin: 10px 0">
-						Не сдавайтесь с Английским. Пора понять Садхгуру! Изучи
-						проверенную систему из 5 ступеней, и наконец
-						<b>заговори на English</b>, даже если вам не 20, и не
-						хватает <b>дисциплины</b> и <b>свободного времени</b>!
+						Не сдавайтесь с Английским. Пора понять Садхгуру! Изучи проверенную систему
+						из 5 ступеней, и наконец
+						<b>заговори на English</b>, даже если вам не 20, и не хватает
+						<b>дисциплины</b> и <b>свободного времени</b>!
 					</div>
 
 					<div class="countdown">
 						<span class="countdown-section">
-							<span id="days" class="countdown-amount separator"
-								>00</span
-							>
+							<span id="days" class="countdown-amount separator">00</span>
 							<br />
 							<span class="countdown-period">Дней</span>
 						</span>
 						<span class="countdown-section">
-							<span id="hours" class="countdown-amount separator"
-								>00</span
-							>
+							<span id="hours" class="countdown-amount separator">00</span>
 							<br />
 							<span class="countdown-period">Час</span>
 						</span>
 						<span class="countdown-section">
-							<span
-								id="minutes"
-								class="countdown-amount separator"
-								>00</span
-							>
+							<span id="minutes" class="countdown-amount separator">00</span>
 							<br />
 							<span class="countdown-period">Мин</span>
 						</span>
 						<span class="countdown-section">
-							<span id="seconds" class="countdown-amount"
-								>00</span
-							>
+							<span id="seconds" class="countdown-amount">00</span>
 							<br />
 							<span class="countdown-period">Сек</span>
 						</span>
