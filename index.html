@@ -25,23 +25,37 @@
 		<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
 		<link rel="manifest" href="/site.webmanifest" />
 		<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5" />
-		<!-- MailerLite Universal -->
-		<script>
-			(function (w, d, e, u, f, l, n) {
-				(w[f] =
-					w[f] ||
-					function () {
-						(w[f].q = w[f].q || []).push(arguments);
-					}),
-					(l = d.createElement(e)),
-					(l.async = 1),
-					(l.src = u),
-					(n = d.getElementsByTagName(e)[0]),
-					n.parentNode.insertBefore(l, n);
-			})(window, document, 'script', 'https://assets.mailerlite.com/js/universal.js', 'ml');
-			ml('account', '421096');
+		<!-- Top.Mail.Ru counter -->
+		<script type="text/javascript">
+			var _tmr = window._tmr || (window._tmr = []);
+			_tmr.push({ id: '3336535', type: 'pageView', start: new Date().getTime() });
+			(function (d, w, id) {
+				if (d.getElementById(id)) return;
+				var ts = d.createElement('script');
+				ts.type = 'text/javascript';
+				ts.async = true;
+				ts.id = id;
+				ts.src = 'https://top-fwz1.mail.ru/js/code.js';
+				var f = function () {
+					var s = d.getElementsByTagName('script')[0];
+					s.parentNode.insertBefore(ts, s);
+				};
+				if (w.opera == '[object Opera]') {
+					d.addEventListener('DOMContentLoaded', f, false);
+				} else {
+					f();
+				}
+			})(document, window, 'tmr-code');
 		</script>
-		<!-- End MailerLite Universal -->
+		<noscript
+			><div>
+				<img
+					src="https://top-fwz1.mail.ru/counter?id=3336535;js=na"
+					style="position: absolute; left: -9999px"
+					alt="Top.Mail.Ru"
+				/></div
+		></noscript>
+		<!-- /Top.Mail.Ru counter -->
 	</head>
 	<body>
 		<header>
