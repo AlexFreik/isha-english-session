@@ -71,7 +71,7 @@
 
 			<script>
 				// Set the date we're counting down to
-				var countDownDate = new Date('2023-06-03T12:00:00.000+03:00').getTime();
+				var countDownDate = new Date('2023-07-01T15:00:00.000+03:00').getTime();
 
 				// Update the count down every 1 second
 				var x = setInterval(function () {
@@ -104,12 +104,12 @@
 			<script>
 				var y = setInterval(function () {
 					var joinBtn = document.getElementById('join-btn');
-					var countDownDate = new Date('2023-06-03T12:00:00.000+03:00').getTime();
+					var countDownDate = new Date('2023-07-01T15:00:00.000+03:00').getTime();
 					var now = new Date().getTime();
 					var distance = countDownDate - now;
 					var minutes = distance / (1000 * 60);
 
-					if (minutes <= 20) {
+					if (minutes <= 10) {
 						joinBtn.classList.remove('disabled');
 					}
 				}, 1000);
@@ -156,13 +156,13 @@
 					</div>
 
 					<a
-						href="https://us06web.zoom.us/j/81097381723"
+						href="https://us06web.zoom.us/j/81211691127?pwd=WXhkUU5kSmdyeVcrOURzdG1vYVA3dz09"
 						id="join-btn"
 						target="_blank"
 						class="cta-button disabled"
 						>Присоединиться*</a
 					>
-					*Кнопка станет активна 20 мин до начала Сессии.
+					*Кнопка станет активна 10 мин до начала Сессии.
 				</div>
 			</section>
 		</main>
